@@ -33,13 +33,13 @@ export default function CartPage() {
           {items.map(item => (
             <div key={item.product.id} className="flex gap-4 p-4 rounded-lg border">
               <Link to={`/product/${item.product.slug}`} className="w-24 h-24 rounded-md overflow-hidden shrink-0">
-                <img src={item.product.images[0]} alt={item.product.name} className="w-full h-full object-cover" />
+                <img src={item.product.images[0]?.url || '/placeholder.svg'} alt={item.product.name} className="w-full h-full object-cover" />
               </Link>
               <div className="flex-1 min-w-0">
                 <Link to={`/product/${item.product.slug}`} className="font-medium hover:text-accent transition-colors line-clamp-1">
                   {item.product.name}
                 </Link>
-                <p className="text-xs text-muted-foreground">{item.product.brand} · {item.product.sku}</p>
+                <p className="text-xs text-muted-foreground">{item.product.brand?.name} · {item.product.sku}</p>
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center border rounded-md">
                     <button className="p-2 hover:bg-secondary" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>

@@ -21,10 +21,13 @@ export default function PortfolioDetailPage() {
     <div className="container-page pb-16">
       <Breadcrumbs items={[{ label: 'Portofoliu', href: '/portfolio' }, { label: project.title }]} />
       <div className="max-w-3xl mx-auto">
-        <span className="text-sm uppercase tracking-wider text-accent font-medium">{project.category} · {project.location}</span>
+        <span className="text-sm uppercase tracking-wider text-accent font-medium">
+          {project.clientName || 'Proiect Raview'}
+          {project.completedAt ? ` · ${new Date(project.completedAt).toLocaleDateString('ro-RO')}` : ''}
+        </span>
         <h1 className="text-3xl md:text-4xl font-display font-bold mt-2 mb-6">{project.title}</h1>
         <div className="space-y-4 mb-8">
-          {project.images.map((img, i) => (
+          {(project.gallery?.length ? project.gallery : [project.coverImage || '/placeholder.svg']).map((img, i) => (
             <img key={i} src={img} alt={`${project.title} ${i + 1}`} className="w-full rounded-xl" loading="lazy" />
           ))}
         </div>

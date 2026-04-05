@@ -23,34 +23,46 @@ const badgeLabels: Record<string, string> = {
 
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
+  const badges = [
+    ...(product.isNew ? (['new'] as const) : []),
+    ...(product.oldPrice && product.oldPrice > product.price ? (['sale'] as const) : []),
+    ...(product.bestseller ? (['bestseller'] as const) : []),
+  ];
+  const discount = product.oldPrice ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : 0;
+  const imageUrl = product.images[0]?.url ?? '/placeholder.svg';
+  const brandName = product.brand?.name ?? 'Brand';
+  const reviewCount = product.reviews?.length ?? 0;
+  const averageRating = reviewCount
+    ? product.reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
+    : 0;
 
   return (
     <div className="group hover-lift bg-card rounded-lg border overflow-hidden">
       <Link to={`/product/${product.slug}`} className="block relative aspect-square overflow-hidden bg-secondary">
         <img
-          src={product.images[0]}
+          src={imageUrl}
           alt={product.name}
           loading="lazy"
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {product.badges.length > 0 && (
+        {badges.length > 0 && (
           <div className="absolute top-3 left-3 flex flex-col gap-1">
-            {product.badges.map(badge => (
+            {badges.map(badge => (
               <Badge key={badge} className={`${badgeStyles[badge]} text-[10px] font-semibold px-2`}>
                 {badgeLabels[badge]}
               </Badge>
             ))}
           </div>
         )}
-        {product.discount && (
+        {discount > 0 && (
           <div className="absolute top-3 right-3 h-10 w-10 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs font-bold">
-            -{product.discount}%
+            -{discount}%
           </div>
         )}
       </Link>
 
       <div className="p-4 space-y-2">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">{product.brand}</p>
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">{brandName}</p>
         <Link to={`/product/${product.slug}`}>
           <h3 className="font-medium text-sm leading-tight line-clamp-2 group-hover:text-accent transition-colors">
             {product.name}
@@ -58,9 +70,9 @@ export function ProductCard({ product }: ProductCardProps) {
         </Link>
         <div className="flex items-center gap-1">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className={`h-3 w-3 ${i < Math.round(product.rating) ? 'fill-accent text-accent' : 'text-border'}`} />
+            <Star key={i} className={`h-3 w-3 ${i < Math.round(averageRating) ? 'fill-accent text-accent' : 'text-border'}`} />
           ))}
-          <span className="text-xs text-muted-foreground ml-1">({product.reviewCount})</span>
+          <span className="text-xs text-muted-foreground ml-1">({reviewCount})</span>
         </div>
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-2">
@@ -74,12 +86,12 @@ export function ProductCard({ product }: ProductCardProps) {
             variant="outline"
             className="h-8 w-8 shrink-0 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-colors"
             onClick={(e) => { e.preventDefault(); addItem(product); }}
-            disabled={!product.inStock}
+            disabled={product.stock <= 0}
           >
             <ShoppingBag className="h-4 w-4" />
           </Button>
         </div>
-        {!product.inStock && <p className="text-xs text-destructive font-medium">Stoc epuizat</p>}
+        {product.stock <= 0 && <p className="text-xs text-destructive font-medium">Stoc epuizat</p>}
       </div>
     </div>
   );

@@ -25,8 +25,8 @@ export default function ProductPage() {
   });
 
   const { data: related } = useQuery({
-    queryKey: ['products', 'related', product?.categorySlug, product?.id],
-    queryFn: () => api.products.getRelated(product!.categorySlug, product!.id),
+    queryKey: ['products', 'related', product?.categoryId, product?.id],
+    queryFn: () => api.products.getRelated(product!.categoryId, product!.id),
     enabled: !!product,
   });
 
@@ -37,7 +37,7 @@ export default function ProductPage() {
     <div className="container-page pb-16">
       <Breadcrumbs items={[
         { label: 'Magazin', href: '/shop' },
-        { label: product.category, href: `/category/${product.categorySlug}` },
+        { label: product.category?.name ?? 'Categorie', href: `/category/${product.category?.slug}` },
         { label: product.name },
       ]} />
 
@@ -46,15 +46,15 @@ export default function ProductPage() {
         "@context": "https://schema.org",
         "@type": "Product",
         name: product.name,
-        image: product.images,
-        description: product.shortDescription,
+        image: product.images.map((image) => image.url),
+        description: product.description,
         sku: product.sku,
-        brand: { "@type": "Brand", name: product.brand },
+        brand: { "@type": "Brand", name: product.brand?.name },
         offers: {
           "@type": "Offer",
           price: product.price,
           priceCurrency: "RON",
-          availability: product.inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+          availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         },
       })}} />
 
@@ -62,7 +62,7 @@ export default function ProductPage() {
         {/* Gallery */}
         <div className="space-y-3">
           <div className="aspect-square rounded-lg overflow-hidden bg-secondary">
-            <img src={product.images[selectedImage]} alt={product.name} className="w-full h-full object-cover" />
+            <img src={product.images[selectedImage]?.url ?? '/placeholder.svg'} alt={product.name} className="w-full h-full object-cover" />
           </div>
           {product.images.length > 1 && (
             <div className="flex gap-2">
@@ -72,7 +72,7 @@ export default function ProductPage() {
                   onClick={() => setSelectedImage(i)}
                   className={`w-20 h-20 rounded-md overflow-hidden border-2 transition-colors ${i === selectedImage ? 'border-accent' : 'border-transparent hover:border-border'}`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" />
+                  <img src={img.url} alt={img.alt ?? ''} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -83,17 +83,15 @@ export default function ProductPage() {
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">{product.brand}</span>
+              <span className="text-sm text-muted-foreground uppercase tracking-wider">{product.brand?.name}</span>
               <span className="text-xs text-muted-foreground">SKU: {product.sku}</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-display font-bold">{product.name}</h1>
-            {product.badges.length > 0 && (
+            {(product.isNew || product.bestseller || (product.oldPrice && product.oldPrice > product.price)) && (
               <div className="flex gap-2 mt-3">
-                {product.badges.map(b => (
-                  <Badge key={b} variant={b === 'sale' ? 'destructive' : 'default'}>
-                    {b === 'new' ? 'Nou' : b === 'sale' ? 'Reducere' : 'Bestseller'}
-                  </Badge>
-                ))}
+                {product.isNew && <Badge>Nou</Badge>}
+                {product.oldPrice && product.oldPrice > product.price && <Badge variant="destructive">Reducere</Badge>}
+                {product.bestseller && <Badge variant="secondary">Bestseller</Badge>}
               </div>
             )}
           </div>
@@ -108,11 +106,11 @@ export default function ProductPage() {
             )}
           </div>
 
-          <p className="text-muted-foreground">{product.shortDescription}</p>
+          <p className="text-muted-foreground">{product.seoDescription || product.description}</p>
 
           <div className="flex items-center gap-2">
-            {product.inStock ? (
-              <span className="flex items-center gap-1 text-sm text-green-600 font-medium"><Check className="h-4 w-4" /> În stoc ({product.stockCount} buc.)</span>
+            {product.stock > 0 ? (
+              <span className="flex items-center gap-1 text-sm text-green-600 font-medium"><Check className="h-4 w-4" /> În stoc ({product.stock} buc.)</span>
             ) : (
               <span className="text-sm text-destructive font-medium">Stoc epuizat</span>
             )}
@@ -132,7 +130,7 @@ export default function ProductPage() {
             <Button
               size="lg"
               className="flex-1 bg-accent text-accent-foreground hover:bg-gold-dark"
-              disabled={!product.inStock}
+              disabled={product.stock <= 0}
               onClick={() => addItem(product, quantity)}
             >
               <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș
@@ -163,11 +161,11 @@ export default function ProductPage() {
           <TabsTrigger value="delivery">Livrare & Plată</TabsTrigger>
         </TabsList>
         <TabsContent value="description" className="prose prose-sm max-w-none mt-6">
-          <p>{product.description}</p>
+          <p>{product.description || 'Descriere indisponibilă momentan.'}</p>
         </TabsContent>
         <TabsContent value="specs" className="mt-6">
           <div className="max-w-lg">
-            {Object.entries(product.specs).map(([key, val]) => (
+            {Object.entries(product.specs ?? {}).map(([key, val]) => (
               <div key={key} className="flex justify-between py-3 border-b last:border-0 text-sm">
                 <span className="text-muted-foreground">{key}</span>
                 <span className="font-medium">{val}</span>
@@ -198,7 +196,7 @@ export default function ProductPage() {
         </div>
         <Button
           className="flex-1 bg-accent text-accent-foreground hover:bg-gold-dark"
-          disabled={!product.inStock}
+          disabled={product.stock <= 0}
           onClick={() => addItem(product, quantity)}
         >
           <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș

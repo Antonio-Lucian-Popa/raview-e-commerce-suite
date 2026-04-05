@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
-import { categories } from '@/lib/data';
 import heroImage from '@/assets/hero-showroom.jpg';
 
 const benefits = [
@@ -20,6 +19,15 @@ export default function HomePage() {
     queryKey: ['products', 'featured'],
     queryFn: () => api.products.getFeatured(),
   });
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'home'],
+    queryFn: () => api.categories.getAll(),
+  });
+  const { data: promotions = [] } = useQuery({
+    queryKey: ['promotions', 'home'],
+    queryFn: () => api.promotions.getAll(),
+  });
+  const topPromotion = promotions[0];
 
   return (
     <>
@@ -83,11 +91,11 @@ export default function HomePage() {
                 to={`/category/${cat.slug}`}
                 className="group relative aspect-[4/3] rounded-lg overflow-hidden hover-lift"
               >
-                <img src={cat.image} alt={cat.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <img src={cat.image || '/placeholder.svg'} alt={cat.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <h3 className="font-semibold text-background text-sm md:text-base">{cat.name}</h3>
-                  <p className="text-xs text-background/60 mt-0.5">{cat.productCount} produse</p>
+                  <p className="text-xs text-background/60 mt-0.5">{cat.productCount ?? 0} produse</p>
                 </div>
               </Link>
             ))}
@@ -118,9 +126,22 @@ export default function HomePage() {
             <div className="max-w-lg">
               <span className="text-accent text-sm font-semibold uppercase tracking-wider">Ofertă Specială</span>
               <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 mb-4">
-                Până la <span className="text-gradient-gold">40% Reducere</span>
+                {topPromotion ? (
+                  <>
+                    {topPromotion.type === 'percentage' ? 'Până la ' : 'Reducere de '}
+                    <span className="text-gradient-gold">
+                      {topPromotion.type === 'percentage' ? `${topPromotion.value}%` : `${topPromotion.value} lei`}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    Până la <span className="text-gradient-gold">40% Reducere</span>
+                  </>
+                )}
               </h2>
-              <p className="text-background/60">Profită de cele mai bune oferte la corpuri de iluminat. Reduceri limitate pentru produse de calitate.</p>
+              <p className="text-background/60">
+                {topPromotion?.name ?? 'Profită de cele mai bune oferte la corpuri de iluminat. Reduceri limitate pentru produse de calitate.'}
+              </p>
               <Button size="lg" className="mt-6 bg-accent text-accent-foreground hover:bg-gold-dark" asChild>
                 <Link to="/promotions">Vezi Ofertele</Link>
               </Button>

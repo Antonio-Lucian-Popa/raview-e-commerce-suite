@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/hooks/useCart';
 import { CreditCard, Lock } from 'lucide-react';
 import { useState } from 'react';
+import { api } from '@/lib/api';
 
 const schema = z.object({
   firstName: z.string().min(2, 'Prenumele este obligatoriu'),
@@ -40,9 +41,17 @@ export default function CheckoutPage() {
 
   const onSubmit = async (data: FormData) => {
     setProcessing(true);
-    await new Promise(r => setTimeout(r, 1500));
-    clearCart();
-    navigate('/order-success');
+    try {
+      await api.orders.create(
+        data,
+        items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+        shipping,
+      );
+      clearCart();
+      navigate('/order-success');
+    } finally {
+      setProcessing(false);
+    }
   };
 
   if (items.length === 0) {
@@ -133,7 +142,7 @@ export default function CheckoutPage() {
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {items.map(item => (
                 <div key={item.product.id} className="flex items-center gap-3">
-                  <img src={item.product.images[0]} alt="" className="w-12 h-12 rounded object-cover" />
+                  <img src={item.product.images[0]?.url || '/placeholder.svg'} alt="" className="w-12 h-12 rounded object-cover" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm line-clamp-1">{item.product.name}</p>
                     <p className="text-xs text-muted-foreground">x{item.quantity}</p>

@@ -15,14 +15,25 @@ export default function PromotionsPage() {
       <div className="grid md:grid-cols-2 gap-6">
         {promos?.map(promo => (
           <div key={promo.id} className="relative rounded-xl overflow-hidden group hover-lift">
-            <img src={promo.image} alt={promo.title} className="w-full h-64 object-cover" loading="lazy" />
+            <img
+              src={promo.product?.images?.[0]?.url || promo.category?.image || '/placeholder.svg'}
+              alt={promo.name}
+              className="w-full h-64 object-cover"
+              loading="lazy"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 to-transparent flex items-end">
               <div className="p-6 w-full">
-                <Badge className="bg-accent text-accent-foreground mb-2">-{promo.discount}%</Badge>
-                <h3 className="text-xl font-display font-bold text-background">{promo.title}</h3>
-                <p className="text-sm text-background/70 mt-1">{promo.description}</p>
+                <Badge className="bg-accent text-accent-foreground mb-2">
+                  {promo.type === 'percentage' ? `-${promo.value}%` : `-${promo.value} lei`}
+                </Badge>
+                <h3 className="text-xl font-display font-bold text-background">{promo.name}</h3>
+                <p className="text-sm text-background/70 mt-1">
+                  Valabilă până la {new Date(promo.endDate).toLocaleDateString('ro-RO')}
+                </p>
                 <Button className="mt-4 bg-accent text-accent-foreground hover:bg-gold-dark" size="sm" asChild>
-                  <Link to="/shop">Vezi produsele</Link>
+                  <Link to={promo.categoryId ? `/shop?categoryId=${promo.categoryId}` : '/shop'}>
+                    Vezi produsele
+                  </Link>
                 </Button>
               </div>
             </div>

@@ -1,16 +1,18 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Search, ShoppingBag, Menu, X, Phone, MapPin, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
-import { categories } from '@/lib/data';
+import { api } from '@/lib/api';
 
-const navLinks = [
+const baseNavLinks = [
   { label: 'Acasă', href: '/' },
-  { label: 'Magazine', href: '/shop', children: categories.map(c => ({ label: c.name, href: `/category/${c.slug}` })) },
+  { label: 'Magazine', href: '/shop' },
   { label: 'Oferte', href: '/promotions' },
   { label: 'Portofoliu', href: '/portfolio' },
   { label: 'Contact', href: '/contact' },
+  { label: 'Admin', href: '/admin' },
 ];
 
 export function Header() {
@@ -20,6 +22,21 @@ export function Header() {
   const [megaMenuOpen, setMegaMenuOpen] = useState<string | null>(null);
   const { totalItems, setIsOpen } = useCart();
   const location = useLocation();
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'header'],
+    queryFn: () => api.categories.getAll(),
+  });
+  const navLinks = baseNavLinks.map((link) =>
+    link.href === '/shop'
+      ? {
+          ...link,
+          children: categories.map((category) => ({
+            label: category.name,
+            href: `/category/${category.slug}`,
+          })),
+        }
+      : link,
+  );
 
   return (
     <>

@@ -35,7 +35,7 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {items.map(item => (
                 <div key={item.product.id} className="flex gap-3 p-3 rounded-lg border">
-                  <img src={item.product.images[0]} alt={item.product.name} className="w-20 h-20 object-cover rounded" />
+                  <img src={item.product.images[0]?.url || '/placeholder.svg'} alt={item.product.name} className="w-20 h-20 object-cover rounded" />
                   <div className="flex-1 min-w-0">
                     <Link
                       to={`/product/${item.product.slug}`}
@@ -44,7 +44,7 @@ export function CartDrawer() {
                     >
                       {item.product.name}
                     </Link>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.product.brand}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.product.brand?.name}</p>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-1 border rounded">
                         <button className="p-1 hover:bg-secondary transition-colors" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>

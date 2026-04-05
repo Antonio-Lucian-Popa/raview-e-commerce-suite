@@ -26,10 +26,18 @@ export default function PortfolioPage() {
             to={`/portfolio/${project.slug}`}
             className="group relative aspect-[16/10] rounded-xl overflow-hidden hover-lift"
           >
-            <img src={project.images[0]} alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+            <img
+              src={project.coverImage || project.gallery?.[0] || '/placeholder.svg'}
+              alt={project.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-transparent to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6">
-              <span className="text-xs uppercase tracking-wider text-accent font-medium">{project.category} · {project.location}</span>
+              <span className="text-xs uppercase tracking-wider text-accent font-medium">
+                {project.clientName || 'Proiect realizat'}
+                {project.completedAt ? ` · ${new Date(project.completedAt).toLocaleDateString('ro-RO')}` : ''}
+              </span>
               <h3 className="text-xl font-display font-bold text-background mt-1">{project.title}</h3>
               <p className="text-sm text-background/70 mt-1 line-clamp-2">{project.description}</p>
             </div>
