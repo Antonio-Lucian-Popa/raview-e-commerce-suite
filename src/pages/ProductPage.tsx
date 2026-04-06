@@ -101,7 +101,7 @@ export default function ProductPage() {
             {product.oldPrice && (
               <>
                 <span className="text-lg text-muted-foreground line-through">{product.oldPrice} lei</span>
-                <Badge variant="destructive">-{product.discount}%</Badge>
+                <Badge variant="destructive">-{Math.round((1 - product.price / product.oldPrice!) * 100)}%</Badge>
               </>
             )}
           </div>
