@@ -6,13 +6,18 @@ import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
 
-const baseNavLinks = [
+type NavLink = {
+  label: string;
+  href: string;
+  children?: { label: string; href: string }[];
+};
+
+const baseNavLinks: NavLink[] = [
   { label: 'Acasă', href: '/' },
   { label: 'Magazine', href: '/shop' },
   { label: 'Oferte', href: '/promotions' },
   { label: 'Portofoliu', href: '/portfolio' },
   { label: 'Contact', href: '/contact' },
-  { label: 'Admin', href: '/admin' },
 ];
 
 export function Header() {
@@ -26,7 +31,7 @@ export function Header() {
     queryKey: ['categories', 'header'],
     queryFn: () => api.categories.getAll(),
   });
-  const navLinks = baseNavLinks.map((link) =>
+  const navLinks: NavLink[] = baseNavLinks.map((link) =>
     link.href === '/shop'
       ? {
           ...link,

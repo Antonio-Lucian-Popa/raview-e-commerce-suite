@@ -43,7 +43,7 @@ export default function CheckoutPage() {
     setProcessing(true);
     try {
       await api.orders.create(
-        data,
+        data as import('@/types').CheckoutFormData,
         items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
         shipping,
       );
