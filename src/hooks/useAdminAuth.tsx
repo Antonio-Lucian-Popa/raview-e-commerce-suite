@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { api, adminSessionStorage } from '@/lib/api';
-import { AuthSession } from '@/types';
+import { AdminUser, AuthSession } from '@/types';
 
 type AdminAuthContextValue = {
   session: AuthSession | null;
@@ -24,7 +24,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       .me(session.accessToken)
       .then((user) => {
         if (!cancelled) {
-          setSession((current) => (current ? { ...current, user } : current));
+          setSession((current) => (current ? { ...current, user: user as AdminUser } : current));
         }
       })
       .catch(() => {

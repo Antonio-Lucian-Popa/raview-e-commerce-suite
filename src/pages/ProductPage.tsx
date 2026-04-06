@@ -101,7 +101,7 @@ export default function ProductPage() {
             {product.oldPrice && (
               <>
                 <span className="text-lg text-muted-foreground line-through">{product.oldPrice} lei</span>
-                <Badge variant="destructive">-{product.discount}%</Badge>
+                <Badge variant="destructive">-{Math.round((1 - product.price / product.oldPrice!) * 100)}%</Badge>
               </>
             )}
           </div>
@@ -168,7 +168,7 @@ export default function ProductPage() {
             {Object.entries(product.specs ?? {}).map(([key, val]) => (
               <div key={key} className="flex justify-between py-3 border-b last:border-0 text-sm">
                 <span className="text-muted-foreground">{key}</span>
-                <span className="font-medium">{val}</span>
+                <span className="font-medium">{String(val)}</span>
               </div>
             ))}
           </div>
