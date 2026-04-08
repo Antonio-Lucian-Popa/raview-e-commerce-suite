@@ -3,6 +3,7 @@ import {
   ReactNode,
   startTransition,
   useDeferredValue,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -17,13 +18,13 @@ import {
   ShoppingCart,
   Sparkles,
   Tags,
-  Trash2,
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -61,6 +62,12 @@ type ProductFormState = {
   bestseller: boolean;
   isNew: boolean;
   active: boolean;
+};
+
+type ProductImageDraft = {
+  url: string;
+  file: File | null;
+  previewUrl: string;
 };
 
 type CategoryFormState = {
@@ -112,6 +119,12 @@ const emptyProductForm: ProductFormState = {
   isNew: false,
   active: true,
 };
+
+const emptyProductImageDraft = (): ProductImageDraft => ({
+  url: '',
+  file: null,
+  previewUrl: '',
+});
 
 const emptyCategoryForm: CategoryFormState = {
   name: '',
@@ -266,6 +279,36 @@ function Card({ title, subtitle, actions, children }: { title: string; subtitle?
   );
 }
 
+function PaginationControls({
+  page,
+  totalPages,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      <p className="text-xs text-muted-foreground">
+        Pagina {page} din {totalPages}
+      </p>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={onPrevious} disabled={page <= 1}>
+          Anterior
+        </Button>
+        <Button variant="outline" size="sm" onClick={onNext} disabled={page >= totalPages}>
+          Următor
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ───────── sidebar nav items ───────── */
 
 const sidebarItems: { key: AdminTab; label: string; icon: typeof Package2 }[] = [
@@ -279,20 +322,33 @@ const sidebarItems: { key: AdminTab; label: string; icon: typeof Package2 }[] = 
 /* ───────── MAIN ───────── */
 
 export default function AdminPage() {
-  const { session, isAuthenticated, login, logout } = useAdminAuth();
+  const { session, logout } = useAdminAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<AdminTab>('products');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const pageSize = 10;
   const [productForm, setProductForm] = useState<ProductFormState>(emptyProductForm);
+  const [productImageDrafts, setProductImageDrafts] = useState<ProductImageDraft[]>([emptyProductImageDraft()]);
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(emptyCategoryForm);
+  const [categoryImageFile, setCategoryImageFile] = useState<File | null>(null);
+  const [categoryImagePreview, setCategoryImagePreview] = useState('');
   const [brandForm, setBrandForm] = useState<BrandFormState>(emptyBrandForm);
+  const [brandLogoFile, setBrandLogoFile] = useState<File | null>(null);
+  const [brandLogoPreview, setBrandLogoPreview] = useState('');
   const [promotionForm, setPromotionForm] = useState<PromotionFormState>(emptyPromotionForm);
+  const [productDialogOpen, setProductDialogOpen] = useState(false);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [brandDialogOpen, setBrandDialogOpen] = useState(false);
+  const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
   const [productSearch, setProductSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [brandSearch, setBrandSearch] = useState('');
   const [promotionSearch, setPromotionSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
+  const [productsPage, setProductsPage] = useState(1);
+  const [categoriesPage, setCategoriesPage] = useState(1);
+  const [brandsPage, setBrandsPage] = useState(1);
+  const [promotionsPage, setPromotionsPage] = useState(1);
+  const [ordersPage, setOrdersPage] = useState(1);
 
   const deferredProductSearch = useDeferredValue(productSearch);
   const deferredCategorySearch = useDeferredValue(categorySearch);
@@ -302,65 +358,198 @@ export default function AdminPage() {
 
   const token = session?.accessToken ?? '';
   const currentUser = session?.user;
+  const needsProducts = activeTab === 'products' || productDialogOpen || promotionDialogOpen;
+  const needsCategories = activeTab === 'categories' || categoryDialogOpen || productDialogOpen || promotionDialogOpen;
+  const needsBrands = activeTab === 'brands' || brandDialogOpen || productDialogOpen;
+  const needsPromotions = activeTab === 'promotions' || promotionDialogOpen;
+  const needsOrders = activeTab === 'orders';
 
-  const { data: productsData } = useQuery({ queryKey: ['admin', 'products'], queryFn: () => api.products.adminGetAll(token), enabled: isAuthenticated });
-  const { data: categories = [] } = useQuery({ queryKey: ['admin', 'categories'], queryFn: () => api.categories.adminGetAll(token), enabled: isAuthenticated });
-  const { data: brands = [] } = useQuery({ queryKey: ['admin', 'brands'], queryFn: () => api.brands.adminGetAll(token), enabled: isAuthenticated });
-  const { data: promotions = [] } = useQuery({ queryKey: ['admin', 'promotions'], queryFn: () => api.promotions.adminGetAll(token), enabled: isAuthenticated });
-  const { data: orders = [] } = useQuery({ queryKey: ['admin', 'orders'], queryFn: () => api.orders.adminGetAll(token), enabled: isAuthenticated });
+  const { data: productsData } = useQuery({
+    queryKey: ['admin', 'products', productsPage, deferredProductSearch],
+    queryFn: () => api.products.adminGetAll(token, { page: productsPage, limit: pageSize, search: deferredProductSearch || undefined }),
+    enabled: Boolean(token) && needsProducts,
+    placeholderData: (previousData) => previousData,
+  });
+  const { data: categoriesData } = useQuery({
+    queryKey: ['admin', 'categories', categoriesPage, deferredCategorySearch],
+    queryFn: () => api.categories.adminGetAll(token, { page: categoriesPage, limit: pageSize, search: deferredCategorySearch || undefined }),
+    enabled: Boolean(token) && needsCategories,
+    placeholderData: (previousData) => previousData,
+  });
+  const { data: brandsData } = useQuery({
+    queryKey: ['admin', 'brands', brandsPage, deferredBrandSearch],
+    queryFn: () => api.brands.adminGetAll(token, { page: brandsPage, limit: pageSize, search: deferredBrandSearch || undefined }),
+    enabled: Boolean(token) && needsBrands,
+    placeholderData: (previousData) => previousData,
+  });
+  const { data: categoriesLookup } = useQuery({
+    queryKey: ['admin', 'categories', 'lookup'],
+    queryFn: () => api.categories.adminGetAll(token, { page: 1, limit: 100 }),
+    enabled: Boolean(token) && (categoryDialogOpen || productDialogOpen || promotionDialogOpen),
+  });
+  const { data: brandsLookup } = useQuery({
+    queryKey: ['admin', 'brands', 'lookup'],
+    queryFn: () => api.brands.adminGetAll(token, { page: 1, limit: 100 }),
+    enabled: Boolean(token) && productDialogOpen,
+  });
+  const { data: productsLookup } = useQuery({
+    queryKey: ['admin', 'products', 'lookup'],
+    queryFn: () => api.products.adminGetAll(token, { page: 1, limit: 100 }),
+    enabled: Boolean(token) && promotionDialogOpen,
+  });
+  const { data: promotionsData } = useQuery({
+    queryKey: ['admin', 'promotions', promotionsPage, deferredPromotionSearch],
+    queryFn: () => api.promotions.adminGetAll(token, { page: promotionsPage, limit: pageSize, search: deferredPromotionSearch || undefined }),
+    enabled: Boolean(token) && needsPromotions,
+    placeholderData: (previousData) => previousData,
+  });
+  const { data: ordersData } = useQuery({
+    queryKey: ['admin', 'orders', ordersPage, deferredOrderSearch],
+    queryFn: () => api.orders.adminGetAll(token, { page: ordersPage, limit: pageSize, search: deferredOrderSearch || undefined }),
+    enabled: Boolean(token) && needsOrders,
+    placeholderData: (previousData) => previousData,
+  });
 
   const products = productsData?.items ?? [];
-  const activePromotions = useMemo(() => promotions.filter((p) => p.active).length, [promotions]);
+  const categories = categoriesData?.items ?? [];
+  const brands = brandsData?.items ?? [];
+  const promotions = promotionsData?.items ?? [];
+  const orders = ordersData?.items ?? [];
+  const categoryOptions = categoriesLookup?.items ?? categories;
+  const brandOptions = brandsLookup?.items ?? brands;
+  const promotionProducts = productsLookup?.items ?? products;
+  const productsTotalPages = Math.max(1, productsData?.meta.totalPages ?? 1);
+
+  const openNewProduct = () => {
+    setProductForm(emptyProductForm);
+    setProductImageDrafts([emptyProductImageDraft()]);
+    setProductDialogOpen(true);
+  };
+  const openNewCategory = () => {
+    setCategoryForm(emptyCategoryForm);
+    setCategoryImageFile(null);
+    setCategoryImagePreview('');
+    setCategoryDialogOpen(true);
+  };
+  const openNewBrand = () => {
+    setBrandForm(emptyBrandForm);
+    setBrandLogoFile(null);
+    setBrandLogoPreview('');
+    setBrandDialogOpen(true);
+  };
+  const openNewPromotion = () => {
+    setPromotionForm(emptyPromotionForm);
+    setPromotionDialogOpen(true);
+  };
+
+  const validateProductForm = () => {
+    if (!productForm.name.trim()) return 'Numele produsului este obligatoriu.';
+    if (!productForm.slug.trim()) return 'Slug-ul produsului este obligatoriu.';
+    if (!productForm.sku.trim()) return 'SKU-ul produsului este obligatoriu.';
+    if (!productForm.categoryId) return 'Selectează o categorie pentru produs.';
+    if (!productForm.brandId) return 'Selectează un brand pentru produs.';
+    return null;
+  };
 
   /* ── filtering ── */
   const filteredProducts = useMemo(() => {
-    const q = deferredProductSearch.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => [p.name, p.sku, p.brand?.name, p.category?.name].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
-  }, [deferredProductSearch, products]);
+    return products;
+  }, [products]);
 
-  const filteredCategories = useMemo(() => {
-    const q = deferredCategorySearch.trim().toLowerCase();
-    if (!q) return categories;
-    return categories.filter((c) => [c.name, c.slug].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
-  }, [categories, deferredCategorySearch]);
+  const filteredCategories = useMemo(() => categories, [categories]);
+  const filteredBrands = useMemo(() => brands, [brands]);
+  const filteredPromotions = useMemo(() => promotions, [promotions]);
+  const filteredOrders = useMemo(() => orders, [orders]);
 
-  const filteredBrands = useMemo(() => {
-    const q = deferredBrandSearch.trim().toLowerCase();
-    if (!q) return brands;
-    return brands.filter((b) => [b.name, b.slug].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
-  }, [brands, deferredBrandSearch]);
+  const categoriesTotalPages = Math.max(1, categoriesData?.meta.totalPages ?? 1);
+  const brandsTotalPages = Math.max(1, brandsData?.meta.totalPages ?? 1);
+  const promotionsTotalPages = Math.max(1, promotionsData?.meta.totalPages ?? 1);
+  const ordersTotalPages = Math.max(1, ordersData?.meta.totalPages ?? 1);
 
-  const filteredPromotions = useMemo(() => {
-    const q = deferredPromotionSearch.trim().toLowerCase();
-    if (!q) return promotions;
-    return promotions.filter((p) => [p.name, p.product?.name, p.category?.name].filter(Boolean).some((v) => v!.toLowerCase().includes(q)));
-  }, [deferredPromotionSearch, promotions]);
+  useEffect(() => {
+    setProductsPage(1);
+  }, [deferredProductSearch]);
 
-  const filteredOrders = useMemo(() => {
-    const q = deferredOrderSearch.trim().toLowerCase();
-    if (!q) return orders;
-    return orders.filter((o) => {
-      const c = getOrderCustomer(o);
-      return [o.id, o.status, c.firstName, c.lastName, c.email].filter(Boolean).some((v) => v!.toLowerCase().includes(q));
-    });
-  }, [deferredOrderSearch, orders]);
+  useEffect(() => {
+    setCategoriesPage(1);
+  }, [deferredCategorySearch]);
+
+  useEffect(() => {
+    setBrandsPage(1);
+  }, [deferredBrandSearch]);
+
+  useEffect(() => {
+    setPromotionsPage(1);
+  }, [deferredPromotionSearch]);
+
+  useEffect(() => {
+    setOrdersPage(1);
+  }, [deferredOrderSearch]);
+
+  useEffect(() => {
+    if (productsPage > productsTotalPages) setProductsPage(productsTotalPages);
+  }, [productsPage, productsTotalPages]);
+
+  useEffect(() => {
+    if (categoriesPage > categoriesTotalPages) setCategoriesPage(categoriesTotalPages);
+  }, [categoriesPage, categoriesTotalPages]);
+
+  useEffect(() => {
+    if (brandsPage > brandsTotalPages) setBrandsPage(brandsTotalPages);
+  }, [brandsPage, brandsTotalPages]);
+
+  useEffect(() => {
+    if (promotionsPage > promotionsTotalPages) setPromotionsPage(promotionsTotalPages);
+  }, [promotionsPage, promotionsTotalPages]);
+
+  useEffect(() => {
+    if (ordersPage > ordersTotalPages) setOrdersPage(ordersTotalPages);
+  }, [ordersPage, ordersTotalPages]);
 
   /* ── mutations ── */
-  const loginMutation = useMutation({
-    mutationFn: async () => login(email, password),
-    onSuccess: () => toast.success('Autentificare reușită.'),
-    onError: (error: Error) => toast.error(error.message),
-  });
-
   const productMutation = useMutation({
     mutationFn: async () => {
-      const payload = toProductPayload(productForm);
-      return productForm.id ? api.products.update(token, productForm.id, payload) : api.products.create(token, payload);
+      const validationMessage = validateProductForm();
+      if (validationMessage) {
+        throw new Error(validationMessage);
+      }
+      const basePayload = toProductPayload({ ...productForm, imageUrls: [] });
+
+      if (!productForm.id) {
+        const createdProduct = await api.products.create(token, basePayload);
+        const resolvedImageUrls = await Promise.all(
+          productImageDrafts.map(async (draft) => (draft.file ? api.uploads.uploadImage(token, draft.file, 'products') : draft.url.trim())),
+        );
+        const finalImages = resolvedImageUrls
+          .filter(Boolean)
+          .map((url, index) => ({ url, position: index }));
+
+        if (finalImages.length > 0) {
+          return api.products.update(token, createdProduct.id, { images: finalImages });
+        }
+
+        return createdProduct;
+      }
+
+      const updatedProduct = await api.products.update(token, productForm.id, basePayload);
+      const resolvedImageUrls = await Promise.all(
+        productImageDrafts.map(async (draft) => (draft.file ? api.uploads.uploadImage(token, draft.file, 'products') : draft.url.trim())),
+      );
+      const finalImages = resolvedImageUrls
+        .filter(Boolean)
+        .map((url, index) => ({ url, position: index }));
+
+      if (finalImages.length > 0 || productImageDrafts.some((draft) => draft.url)) {
+        return api.products.update(token, productForm.id, { images: finalImages });
+      }
+
+      return updatedProduct;
     },
     onSuccess: async () => {
       toast.success(productForm.id ? 'Produs actualizat.' : 'Produs creat.');
       setProductForm(emptyProductForm);
+      setProductImageDrafts([emptyProductImageDraft()]);
+      setProductDialogOpen(false);
       await invalidateAdminData(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -368,12 +557,33 @@ export default function AdminPage() {
 
   const categoryMutation = useMutation({
     mutationFn: async () => {
-      const payload = toCategoryPayload(categoryForm);
-      return categoryForm.id ? api.categories.update(token, categoryForm.id, payload) : api.categories.create(token, payload);
+      const basePayload = toCategoryPayload({
+        ...categoryForm,
+        image: categoryImageFile ? '' : categoryForm.image,
+      });
+
+      if (!categoryForm.id) {
+        const createdCategory = await api.categories.create(token, basePayload);
+        if (categoryImageFile) {
+          const image = await api.uploads.uploadImage(token, categoryImageFile, 'categories');
+          return api.categories.update(token, createdCategory.id, { image });
+        }
+        return createdCategory;
+      }
+
+      const updatedCategory = await api.categories.update(token, categoryForm.id, basePayload);
+      if (categoryImageFile) {
+        const image = await api.uploads.uploadImage(token, categoryImageFile, 'categories');
+        return api.categories.update(token, categoryForm.id, { image });
+      }
+      return updatedCategory;
     },
     onSuccess: async () => {
       toast.success(categoryForm.id ? 'Categorie actualizată.' : 'Categorie creată.');
       setCategoryForm(emptyCategoryForm);
+      setCategoryImageFile(null);
+      setCategoryImagePreview('');
+      setCategoryDialogOpen(false);
       await invalidateAdminData(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -381,12 +591,33 @@ export default function AdminPage() {
 
   const brandMutation = useMutation({
     mutationFn: async () => {
-      const payload = toBrandPayload(brandForm);
-      return brandForm.id ? api.brands.update(token, brandForm.id, payload) : api.brands.create(token, payload);
+      const basePayload = toBrandPayload({
+        ...brandForm,
+        logo: brandLogoFile ? '' : brandForm.logo,
+      });
+
+      if (!brandForm.id) {
+        const createdBrand = await api.brands.create(token, basePayload);
+        if (brandLogoFile) {
+          const logo = await api.uploads.uploadImage(token, brandLogoFile, 'brands');
+          return api.brands.update(token, createdBrand.id, { logo });
+        }
+        return createdBrand;
+      }
+
+      const updatedBrand = await api.brands.update(token, brandForm.id, basePayload);
+      if (brandLogoFile) {
+        const logo = await api.uploads.uploadImage(token, brandLogoFile, 'brands');
+        return api.brands.update(token, brandForm.id, { logo });
+      }
+      return updatedBrand;
     },
     onSuccess: async () => {
       toast.success(brandForm.id ? 'Brand actualizat.' : 'Brand creat.');
       setBrandForm(emptyBrandForm);
+      setBrandLogoFile(null);
+      setBrandLogoPreview('');
+      setBrandDialogOpen(false);
       await invalidateAdminData(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -400,6 +631,7 @@ export default function AdminPage() {
     onSuccess: async () => {
       toast.success(promotionForm.id ? 'Promoție actualizată.' : 'Promoție creată.');
       setPromotionForm(emptyPromotionForm);
+      setPromotionDialogOpen(false);
       await invalidateAdminData(queryClient);
     },
     onError: (error: Error) => toast.error(error.message),
@@ -432,6 +664,16 @@ export default function AdminPage() {
         isNew: product.isNew,
         active: product.active,
       });
+      setProductImageDrafts(
+        product.images.length > 0
+          ? product.images.map((img) => ({
+              url: img.url,
+              file: null,
+              previewUrl: img.url,
+            }))
+          : [emptyProductImageDraft()],
+      );
+      setProductDialogOpen(true);
     });
   };
 
@@ -439,6 +681,9 @@ export default function AdminPage() {
     startTransition(() => {
       setActiveTab('categories');
       setCategoryForm({ id: category.id, name: category.name, slug: category.slug, description: category.description ?? '', image: category.image ?? '', parentId: category.parentId ?? '', active: category.active });
+      setCategoryImageFile(null);
+      setCategoryImagePreview(category.image ?? '');
+      setCategoryDialogOpen(true);
     });
   };
 
@@ -446,6 +691,9 @@ export default function AdminPage() {
     startTransition(() => {
       setActiveTab('brands');
       setBrandForm({ id: brand.id, name: brand.name, slug: brand.slug, description: brand.description ?? '', logo: brand.logo ?? '', active: brand.active });
+      setBrandLogoFile(null);
+      setBrandLogoPreview(brand.logo ?? '');
+      setBrandDialogOpen(true);
     });
   };
 
@@ -453,6 +701,7 @@ export default function AdminPage() {
     startTransition(() => {
       setActiveTab('promotions');
       setPromotionForm({ id: promotion.id, name: promotion.name, type: promotion.type, value: String(promotion.value), startDate: promotion.startDate.slice(0, 10), endDate: promotion.endDate.slice(0, 10), scope: promotion.scope, productId: promotion.productId ?? '', categoryId: promotion.categoryId ?? '', active: promotion.active });
+      setPromotionDialogOpen(true);
     });
   };
 
@@ -462,61 +711,55 @@ export default function AdminPage() {
   };
 
   /* ── image helpers ── */
-  const addImageUrl = () => setProductForm({ ...productForm, imageUrls: [...productForm.imageUrls, ''] });
+  const addImageUrl = () => {
+    setProductForm((current) => ({ ...current, imageUrls: [...current.imageUrls, ''] }));
+    setProductImageDrafts((current) => [...current, emptyProductImageDraft()]);
+  };
   const removeImageUrl = (index: number) => {
     const urls = productForm.imageUrls.filter((_, i) => i !== index);
     setProductForm({ ...productForm, imageUrls: urls.length > 0 ? urls : [''] });
+    setProductImageDrafts((current) => {
+      const next = current.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [emptyProductImageDraft()];
+    });
   };
   const updateImageUrl = (index: number, value: string) => {
     const urls = [...productForm.imageUrls];
     urls[index] = value;
     setProductForm({ ...productForm, imageUrls: urls });
+    setProductImageDrafts((current) => {
+      const next = [...current];
+      next[index] = {
+        url: value,
+        file: next[index]?.file ?? null,
+        previewUrl: next[index]?.previewUrl || value,
+      };
+      return next;
+    });
   };
-
-  /* ════════════════════════════════════════
-   *  LOGIN SCREEN
-   * ════════════════════════════════════════ */
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-secondary/30 px-4 py-12">
-        <div className="w-full max-w-5xl grid overflow-hidden rounded-2xl border border-border/70 bg-card shadow-xl lg:grid-cols-[1.1fr_0.9fr]">
-          {/* Left – branding */}
-          <div className="relative overflow-hidden bg-gradient-dark p-8 md:p-12 text-primary-foreground flex flex-col justify-center">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,206,84,0.15),transparent_40%)]" />
-            <div className="relative">
-              <p className="text-[11px] uppercase tracking-[0.3em] text-accent">RaView Admin</p>
-              <h1 className="mt-4 text-3xl font-display font-bold leading-tight md:text-4xl">
-                Administrează-ți magazinul rapid și simplu.
-              </h1>
-              <p className="mt-4 text-sm leading-7 text-primary-foreground/70">
-                Gestionează produse, categorii, promoții și comenzi dintr-un singur loc.
-              </p>
-            </div>
-          </div>
-
-          {/* Right – form */}
-          <div className="p-8 md:p-12 flex flex-col justify-center">
-            <h2 className="text-2xl font-display font-bold">Autentificare</h2>
-            <p className="mt-2 text-sm text-muted-foreground">Intră cu contul tău de administrator.</p>
-
-            <form onSubmit={(e) => submit(e, () => loginMutation.mutateAsync())} className="mt-6 space-y-4">
-              <div>
-                <Label htmlFor="admin-email">Email</Label>
-                <Input id="admin-email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-11" placeholder="email@exemplu.ro" />
-              </div>
-              <div>
-                <Label htmlFor="admin-password">Parolă</Label>
-                <Input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 h-11" placeholder="••••••••" />
-              </div>
-              <Button type="submit" className="h-11 w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={loginMutation.isPending}>
-                {loginMutation.isPending ? 'Se autentifică...' : 'Intră în cont'}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const updateProductImageFile = (index: number, file?: File | null) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setProductImageDrafts((current) => {
+      const next = [...current];
+      next[index] = {
+        url: next[index]?.url ?? '',
+        file,
+        previewUrl,
+      };
+      return next;
+    });
+  };
+  const updateCategoryImageFile = (file?: File | null) => {
+    if (!file) return;
+    setCategoryImageFile(file);
+    setCategoryImagePreview(URL.createObjectURL(file));
+  };
+  const updateBrandLogoFile = (file?: File | null) => {
+    if (!file) return;
+    setBrandLogoFile(file);
+    setBrandLogoPreview(URL.createObjectURL(file));
+  };
 
   /* ════════════════════════════════════════
    *  DASHBOARD
@@ -581,19 +824,19 @@ export default function AdminPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Produse</p>
-              <p className="mt-1 text-2xl font-display font-bold">{products.length}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{productsData?.meta.total ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Categorii</p>
-              <p className="mt-1 text-2xl font-display font-bold">{categories.length}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{categoriesData?.meta.total ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
-              <p className="text-xs text-muted-foreground">Promoții active</p>
-              <p className="mt-1 text-2xl font-display font-bold">{activePromotions}</p>
+              <p className="text-xs text-muted-foreground">Promoții</p>
+              <p className="mt-1 text-2xl font-display font-bold">{promotionsData?.meta.total ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Comenzi</p>
-              <p className="mt-1 text-2xl font-display font-bold">{orders.length}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{ordersData?.meta.total ?? '—'}</p>
             </div>
           </div>
         </div>
@@ -603,93 +846,9 @@ export default function AdminPage() {
         {/* ═══════ PRODUCTS ═══════ */}
         {activeTab === 'products' && (
           <>
-            <Card
-              title={productForm.id ? 'Editează produs' : 'Produs nou'}
-              actions={productForm.id ? <Button variant="ghost" size="sm" onClick={() => setProductForm(emptyProductForm)}>Resetează</Button> : null}
-            >
-              <form onSubmit={(e) => submit(e, () => productMutation.mutateAsync())} className="space-y-6">
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <div className="space-y-4">
-                    <div><Label>Nume produs</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="mt-1.5" /></div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><Label>Slug</Label><Input value={productForm.slug} onChange={(e) => setProductForm({ ...productForm, slug: e.target.value })} className="mt-1.5" /></div>
-                      <div><Label>SKU</Label><Input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} className="mt-1.5" /></div>
-                    </div>
-                    <div><Label>Descriere</Label><Textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="mt-1.5 min-h-28" /></div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div><Label>Preț (lei)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="mt-1.5" /></div>
-                      <div><Label>Preț vechi</Label><Input type="number" value={productForm.oldPrice} onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })} className="mt-1.5" /></div>
-                      <div><Label>Stoc</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="mt-1.5" /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Categorie</Label>
-                        <Select value={productForm.categoryId} onValueChange={(v) => setProductForm({ ...productForm, categoryId: v })}>
-                          <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege" /></SelectTrigger>
-                          <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Brand</Label>
-                        <Select value={productForm.brandId} onValueChange={(v) => setProductForm({ ...productForm, brandId: v })}>
-                          <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege" /></SelectTrigger>
-                          <SelectContent>{brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {/* Multi-image upload */}
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <Label>Imagini produs</Label>
-                        <Button type="button" variant="ghost" size="sm" onClick={addImageUrl} className="gap-1 text-xs">
-                          <Plus className="h-3 w-3" /> Adaugă imagine
-                        </Button>
-                      </div>
-                      <div className="mt-2 space-y-2">
-                        {productForm.imageUrls.map((url, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Input
-                              value={url}
-                              onChange={(e) => updateImageUrl(index, e.target.value)}
-                              placeholder={`URL imagine ${index + 1}`}
-                              className="flex-1"
-                            />
-                            {url && (
-                              <img src={url} alt="" className="h-9 w-9 rounded object-cover border border-border" onError={(e) => (e.currentTarget.style.display = 'none')} />
-                            )}
-                            {productForm.imageUrls.length > 1 && (
-                              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => removeImageUrl(index)}>
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div><Label>Specificații (JSON)</Label><Textarea value={productForm.specs} onChange={(e) => setProductForm({ ...productForm, specs: e.target.value })} className="mt-1.5 min-h-28 font-mono text-xs" placeholder='{"material": "aluminiu"}' /></div>
-
-                    <div className="grid grid-cols-2 gap-3 rounded-lg bg-secondary/35 p-3">
-                      <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.featured} onCheckedChange={(c) => setProductForm({ ...productForm, featured: Boolean(c) })} /> Recomandat</label>
-                      <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.bestseller} onCheckedChange={(c) => setProductForm({ ...productForm, bestseller: Boolean(c) })} /> Bestseller</label>
-                      <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.isNew} onCheckedChange={(c) => setProductForm({ ...productForm, isNew: Boolean(c) })} /> Nou</label>
-                      <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.active} onCheckedChange={(c) => setProductForm({ ...productForm, active: Boolean(c) })} /> Activ</label>
-                    </div>
-                  </div>
-                </div>
-
-                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={productMutation.isPending}>
-                  {productMutation.isPending ? 'Se salvează...' : productForm.id ? 'Actualizează' : 'Creează produsul'}
-                </Button>
-              </form>
-            </Card>
-
-            <Card title="Toate produsele" actions={<Button variant="outline" size="sm" onClick={() => setProductForm(emptyProductForm)}>Produs nou</Button>}>
-              <SearchToolbar placeholder="Caută după nume, SKU, brand…" value={productSearch} onChange={setProductSearch} countLabel={`${filteredProducts.length} produse`} />
-              <div className="mt-4 space-y-2">
+            <Card title="Toate produsele" actions={<Button variant="outline" size="sm" onClick={openNewProduct}>Produs nou</Button>}>
+              <SearchToolbar placeholder="Caută după nume, SKU, brand…" value={productSearch} onChange={setProductSearch} countLabel={`${productsData?.meta.total ?? 0} produse`} />
+            <div className="mt-4 space-y-2">
                 {filteredProducts.map((product) => (
                   <article key={product.id} className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3 sm:flex-row sm:items-center">
                     <img src={product.images[0]?.url || '/placeholder.svg'} alt={product.name} className="h-14 w-14 rounded-lg object-cover flex-shrink-0" />
@@ -708,6 +867,12 @@ export default function AdminPage() {
                   </article>
                 ))}
                 {filteredProducts.length === 0 && <EmptyBlock message="Nu s-au găsit produse." />}
+                <PaginationControls
+                  page={productsPage}
+                  totalPages={productsTotalPages}
+                  onPrevious={() => setProductsPage((page) => Math.max(1, page - 1))}
+                  onNext={() => setProductsPage((page) => Math.min(productsTotalPages, page + 1))}
+                />
               </div>
             </Card>
           </>
@@ -716,37 +881,9 @@ export default function AdminPage() {
         {/* ═══════ CATEGORIES ═══════ */}
         {activeTab === 'categories' && (
           <>
-            <Card
-              title={categoryForm.id ? 'Editează categorie' : 'Categorie nouă'}
-              actions={categoryForm.id ? <Button variant="ghost" size="sm" onClick={() => setCategoryForm(emptyCategoryForm)}>Resetează</Button> : null}
-            >
-              <form onSubmit={(e) => submit(e, () => categoryMutation.mutateAsync())} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div><Label>Nume</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Slug</Label><Input value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Imagine URL</Label><Input value={categoryForm.image} onChange={(e) => setCategoryForm({ ...categoryForm, image: e.target.value })} className="mt-1.5" /></div>
-                  <div>
-                    <Label>Categorie părinte</Label>
-                    <Select value={categoryForm.parentId || 'none'} onValueChange={(v) => setCategoryForm({ ...categoryForm, parentId: v === 'none' ? '' : v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Fără părinte</SelectItem>
-                        {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div><Label>Descriere</Label><Textarea value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className="mt-1.5 min-h-24" /></div>
-                <label className="flex items-center gap-2 text-sm"><Checkbox checked={categoryForm.active} onCheckedChange={(c) => setCategoryForm({ ...categoryForm, active: Boolean(c) })} /> Activă pe site</label>
-                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={categoryMutation.isPending}>
-                  {categoryMutation.isPending ? 'Se salvează...' : categoryForm.id ? 'Actualizează' : 'Creează categoria'}
-                </Button>
-              </form>
-            </Card>
-
-            <Card title="Toate categoriile">
-              <SearchToolbar placeholder="Caută categorie…" value={categorySearch} onChange={setCategorySearch} countLabel={`${filteredCategories.length} categorii`} />
-              <div className="mt-4 space-y-2">
+            <Card title="Toate categoriile" actions={<Button variant="outline" size="sm" onClick={openNewCategory}>Categorie nouă</Button>}>
+              <SearchToolbar placeholder="Caută categorie…" value={categorySearch} onChange={setCategorySearch} countLabel={`${categoriesData?.meta.total ?? 0} categorii`} />
+            <div className="mt-4 space-y-2">
                 {filteredCategories.map((cat) => (
                   <article key={cat.id} className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent"><LayoutGrid className="h-4 w-4" /></div>
@@ -764,6 +901,12 @@ export default function AdminPage() {
                   </article>
                 ))}
                 {filteredCategories.length === 0 && <EmptyBlock message="Nu s-au găsit categorii." />}
+                <PaginationControls
+                  page={categoriesPage}
+                  totalPages={categoriesTotalPages}
+                  onPrevious={() => setCategoriesPage((page) => Math.max(1, page - 1))}
+                  onNext={() => setCategoriesPage((page) => Math.min(categoriesTotalPages, page + 1))}
+                />
               </div>
             </Card>
           </>
@@ -772,26 +915,8 @@ export default function AdminPage() {
         {/* ═══════ BRANDS ═══════ */}
         {activeTab === 'brands' && (
           <>
-            <Card
-              title={brandForm.id ? 'Editează brand' : 'Brand nou'}
-              actions={brandForm.id ? <Button variant="ghost" size="sm" onClick={() => setBrandForm(emptyBrandForm)}>Resetează</Button> : null}
-            >
-              <form onSubmit={(e) => submit(e, () => brandMutation.mutateAsync())} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div><Label>Nume</Label><Input value={brandForm.name} onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Slug</Label><Input value={brandForm.slug} onChange={(e) => setBrandForm({ ...brandForm, slug: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Logo URL</Label><Input value={brandForm.logo} onChange={(e) => setBrandForm({ ...brandForm, logo: e.target.value })} className="mt-1.5" /></div>
-                </div>
-                <div><Label>Descriere</Label><Textarea value={brandForm.description} onChange={(e) => setBrandForm({ ...brandForm, description: e.target.value })} className="mt-1.5 min-h-24" /></div>
-                <label className="flex items-center gap-2 text-sm"><Checkbox checked={brandForm.active} onCheckedChange={(c) => setBrandForm({ ...brandForm, active: Boolean(c) })} /> Activ pe site</label>
-                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={brandMutation.isPending}>
-                  {brandMutation.isPending ? 'Se salvează...' : brandForm.id ? 'Actualizează' : 'Creează brandul'}
-                </Button>
-              </form>
-            </Card>
-
-            <Card title="Toate brandurile">
-              <SearchToolbar placeholder="Caută brand…" value={brandSearch} onChange={setBrandSearch} countLabel={`${filteredBrands.length} branduri`} />
+            <Card title="Toate brandurile" actions={<Button variant="outline" size="sm" onClick={openNewBrand}>Brand nou</Button>}>
+              <SearchToolbar placeholder="Caută brand…" value={brandSearch} onChange={setBrandSearch} countLabel={`${brandsData?.meta.total ?? 0} branduri`} />
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {filteredBrands.map((brand) => (
                   <article key={brand.id} className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3">
@@ -810,6 +935,12 @@ export default function AdminPage() {
                 ))}
                 {filteredBrands.length === 0 && <EmptyBlock message="Nu s-au găsit branduri." />}
               </div>
+              <PaginationControls
+                page={brandsPage}
+                totalPages={brandsTotalPages}
+                onPrevious={() => setBrandsPage((page) => Math.max(1, page - 1))}
+                onNext={() => setBrandsPage((page) => Math.min(brandsTotalPages, page + 1))}
+              />
             </Card>
           </>
         )}
@@ -817,65 +948,8 @@ export default function AdminPage() {
         {/* ═══════ PROMOTIONS ═══════ */}
         {activeTab === 'promotions' && (
           <>
-            <Card
-              title={promotionForm.id ? 'Editează promoție' : 'Promoție nouă'}
-              actions={promotionForm.id ? <Button variant="ghost" size="sm" onClick={() => setPromotionForm(emptyPromotionForm)}>Resetează</Button> : null}
-            >
-              <form onSubmit={(e) => submit(e, () => promotionMutation.mutateAsync())} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div><Label>Nume</Label><Input value={promotionForm.name} onChange={(e) => setPromotionForm({ ...promotionForm, name: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Valoare</Label><Input type="number" value={promotionForm.value} onChange={(e) => setPromotionForm({ ...promotionForm, value: e.target.value })} className="mt-1.5" /></div>
-                  <div>
-                    <Label>Tip reducere</Label>
-                    <Select value={promotionForm.type} onValueChange={(v: 'percentage' | 'fixed') => setPromotionForm({ ...promotionForm, type: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="percentage">Procent (%)</SelectItem>
-                        <SelectItem value="fixed">Sumă fixă (lei)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Se aplică pe</Label>
-                    <Select value={promotionForm.scope} onValueChange={(v: 'product' | 'category') => setPromotionForm({ ...promotionForm, scope: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="product">Un produs</SelectItem>
-                        <SelectItem value="category">O categorie</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>Început</Label><Input type="date" value={promotionForm.startDate} onChange={(e) => setPromotionForm({ ...promotionForm, startDate: e.target.value })} className="mt-1.5" /></div>
-                  <div><Label>Sfârșit</Label><Input type="date" value={promotionForm.endDate} onChange={(e) => setPromotionForm({ ...promotionForm, endDate: e.target.value })} className="mt-1.5" /></div>
-                </div>
-
-                {promotionForm.scope === 'product' ? (
-                  <div>
-                    <Label>Produs</Label>
-                    <Select value={promotionForm.productId} onValueChange={(v) => setPromotionForm({ ...promotionForm, productId: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege produsul" /></SelectTrigger>
-                      <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div>
-                    <Label>Categorie</Label>
-                    <Select value={promotionForm.categoryId} onValueChange={(v) => setPromotionForm({ ...promotionForm, categoryId: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege categoria" /></SelectTrigger>
-                      <SelectContent>{categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <label className="flex items-center gap-2 text-sm"><Checkbox checked={promotionForm.active} onCheckedChange={(c) => setPromotionForm({ ...promotionForm, active: Boolean(c) })} /> Promoție activă</label>
-                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={promotionMutation.isPending}>
-                  {promotionMutation.isPending ? 'Se salvează...' : promotionForm.id ? 'Actualizează' : 'Creează promoția'}
-                </Button>
-              </form>
-            </Card>
-
-            <Card title="Toate promoțiile">
-              <SearchToolbar placeholder="Caută promoție…" value={promotionSearch} onChange={setPromotionSearch} countLabel={`${filteredPromotions.length} promoții`} />
+            <Card title="Toate promoțiile" actions={<Button variant="outline" size="sm" onClick={openNewPromotion}>Promoție nouă</Button>}>
+              <SearchToolbar placeholder="Caută promoție…" value={promotionSearch} onChange={setPromotionSearch} countLabel={`${promotionsData?.meta.total ?? 0} promoții`} />
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {filteredPromotions.map((promo) => (
                   <article key={promo.id} className="rounded-lg border border-border/70 bg-secondary/15 p-3">
@@ -900,15 +974,21 @@ export default function AdminPage() {
                 ))}
                 {filteredPromotions.length === 0 && <EmptyBlock message="Nu s-au găsit promoții." />}
               </div>
+              <PaginationControls
+                page={promotionsPage}
+                totalPages={promotionsTotalPages}
+                onPrevious={() => setPromotionsPage((page) => Math.max(1, page - 1))}
+                onNext={() => setPromotionsPage((page) => Math.min(promotionsTotalPages, page + 1))}
+              />
             </Card>
           </>
         )}
 
         {/* ═══════ ORDERS ═══════ */}
         {activeTab === 'orders' && (
-          <Card title="Comenzi">
-            <SearchToolbar placeholder="Caută după client, email sau status…" value={orderSearch} onChange={setOrderSearch} countLabel={`${filteredOrders.length} comenzi`} />
-            <div className="mt-4 space-y-2">
+            <Card title="Comenzi">
+              <SearchToolbar placeholder="Caută după client, email sau status…" value={orderSearch} onChange={setOrderSearch} countLabel={`${ordersData?.meta.total ?? 0} comenzi`} />
+              <div className="mt-4 space-y-2">
               {filteredOrders.map((order) => {
                 const customer = getOrderCustomer(order);
                 return (
@@ -930,9 +1010,252 @@ export default function AdminPage() {
                 );
               })}
               {filteredOrders.length === 0 && <EmptyBlock message="Nu s-au găsit comenzi." />}
+              <PaginationControls
+                page={ordersPage}
+                totalPages={ordersTotalPages}
+                onPrevious={() => setOrdersPage((page) => Math.max(1, page - 1))}
+                onNext={() => setOrdersPage((page) => Math.min(ordersTotalPages, page + 1))}
+              />
             </div>
           </Card>
         )}
+
+        <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
+          <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{productForm.id ? 'Editează produs' : 'Produs nou'}</DialogTitle>
+              <DialogDescription>Completează datele produsului fără să aglomerezi pagina principală.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => submit(e, () => productMutation.mutateAsync())} className="space-y-6">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <div><Label>Nume produs</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="mt-1.5" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Slug</Label><Input value={productForm.slug} onChange={(e) => setProductForm({ ...productForm, slug: e.target.value })} className="mt-1.5" /></div>
+                    <div><Label>SKU</Label><Input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} className="mt-1.5" /></div>
+                  </div>
+                  <div><Label>Descriere</Label><Textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="mt-1.5 min-h-28" /></div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><Label>Preț (lei)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="mt-1.5" /></div>
+                    <div><Label>Preț vechi</Label><Input type="number" value={productForm.oldPrice} onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })} className="mt-1.5" /></div>
+                    <div><Label>Stoc</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="mt-1.5" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Categorie</Label>
+                      <Select value={productForm.categoryId} onValueChange={(v) => setProductForm({ ...productForm, categoryId: v })}>
+                        <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege" /></SelectTrigger>
+                        <SelectContent>{categoryOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Brand</Label>
+                      <Select value={productForm.brandId} onValueChange={(v) => setProductForm({ ...productForm, brandId: v })}>
+                        <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege" /></SelectTrigger>
+                        <SelectContent>{brandOptions.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <Label>Imagini produs</Label>
+                      <Button type="button" variant="ghost" size="sm" onClick={addImageUrl} className="gap-1 text-xs">
+                        <Plus className="h-3 w-3" /> Adaugă imagine
+                      </Button>
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {productImageDrafts.map((draft, index) => (
+                        <div key={index} className="rounded-lg border border-border/70 bg-background p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1 space-y-2">
+                              <Label className="text-xs text-muted-foreground">Imagine {index + 1}</Label>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => updateProductImageFile(index, e.target.files?.[0])}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                {draft.file
+                                  ? 'Fișier selectat. Se va încărca la salvarea produsului.'
+                                  : draft.url
+                                    ? 'Imagine deja salvată pentru acest produs.'
+                                    : 'Selectează un fișier imagine.'}
+                              </p>
+                            </div>
+                            {productForm.imageUrls.length > 1 && (
+                              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => removeImageUrl(index)}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                          {draft.previewUrl && (
+                            <div className="mt-3 overflow-hidden rounded-lg border border-border/70">
+                              <img src={draft.previewUrl} alt="" className="h-28 w-full object-cover" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div><Label>Specificații (JSON)</Label><Textarea value={productForm.specs} onChange={(e) => setProductForm({ ...productForm, specs: e.target.value })} className="mt-1.5 min-h-28 font-mono text-xs" placeholder='{"material": "aluminiu"}' /></div>
+
+                  <div className="grid grid-cols-2 gap-3 rounded-lg bg-secondary/35 p-3">
+                    <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.featured} onCheckedChange={(c) => setProductForm({ ...productForm, featured: Boolean(c) })} /> Recomandat</label>
+                    <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.bestseller} onCheckedChange={(c) => setProductForm({ ...productForm, bestseller: Boolean(c) })} /> Bestseller</label>
+                    <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.isNew} onCheckedChange={(c) => setProductForm({ ...productForm, isNew: Boolean(c) })} /> Nou</label>
+                    <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.active} onCheckedChange={(c) => setProductForm({ ...productForm, active: Boolean(c) })} /> Activ</label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={productMutation.isPending}>
+                  {productMutation.isPending ? 'Se salvează...' : productForm.id ? 'Actualizează' : 'Creează produsul'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{categoryForm.id ? 'Editează categorie' : 'Categorie nouă'}</DialogTitle>
+              <DialogDescription>Adaugă sau actualizează o categorie fără să ocupe spațiu în pagină.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => submit(e, () => categoryMutation.mutateAsync())} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label>Nume</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Slug</Label><Input value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })} className="mt-1.5" /></div>
+                <div className="space-y-2">
+                  <Label>Imagine categorie</Label>
+                  <Input type="file" accept="image/*" onChange={(e) => updateCategoryImageFile(e.target.files?.[0])} className="mt-1.5" />
+                  <p className="text-xs text-muted-foreground">{categoryImageFile ? 'Fișier selectat. Se va încărca la salvarea categoriei.' : 'Încarcă o imagine din calculator.'}</p>
+                  {categoryImagePreview && (
+                    <div className="overflow-hidden rounded-lg border border-border/70">
+                      <img src={categoryImagePreview} alt={categoryForm.name || 'Categorie'} className="h-24 w-full object-cover" />
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <Label>Categorie părinte</Label>
+                  <Select value={categoryForm.parentId || 'none'} onValueChange={(v) => setCategoryForm({ ...categoryForm, parentId: v === 'none' ? '' : v })}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                      <SelectItem value="none">Fără părinte</SelectItem>
+                      {categoryOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div><Label>Descriere</Label><Textarea value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} className="mt-1.5 min-h-24" /></div>
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={categoryForm.active} onCheckedChange={(c) => setCategoryForm({ ...categoryForm, active: Boolean(c) })} /> Activă pe site</label>
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={categoryMutation.isPending}>
+                  {categoryMutation.isPending ? 'Se salvează...' : categoryForm.id ? 'Actualizează' : 'Creează categoria'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={brandDialogOpen} onOpenChange={setBrandDialogOpen}>
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{brandForm.id ? 'Editează brand' : 'Brand nou'}</DialogTitle>
+              <DialogDescription>Editează brandurile într-o fereastră separată, mai simplă de folosit.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => submit(e, () => brandMutation.mutateAsync())} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label>Nume</Label><Input value={brandForm.name} onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Slug</Label><Input value={brandForm.slug} onChange={(e) => setBrandForm({ ...brandForm, slug: e.target.value })} className="mt-1.5" /></div>
+                <div className="space-y-2">
+                  <Label>Logo brand</Label>
+                  <Input type="file" accept="image/*" onChange={(e) => updateBrandLogoFile(e.target.files?.[0])} className="mt-1.5" />
+                  <p className="text-xs text-muted-foreground">{brandLogoFile ? 'Fișier selectat. Se va încărca la salvarea brandului.' : 'Încarcă logo-ul din calculator.'}</p>
+                  {brandLogoPreview && (
+                    <div className="overflow-hidden rounded-lg border border-border/70 bg-background p-3">
+                      <img src={brandLogoPreview} alt={brandForm.name || 'Brand'} className="h-16 w-auto max-w-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div><Label>Descriere</Label><Textarea value={brandForm.description} onChange={(e) => setBrandForm({ ...brandForm, description: e.target.value })} className="mt-1.5 min-h-24" /></div>
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={brandForm.active} onCheckedChange={(c) => setBrandForm({ ...brandForm, active: Boolean(c) })} /> Activ pe site</label>
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={brandMutation.isPending}>
+                  {brandMutation.isPending ? 'Se salvează...' : brandForm.id ? 'Actualizează' : 'Creează brandul'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={promotionDialogOpen} onOpenChange={setPromotionDialogOpen}>
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{promotionForm.id ? 'Editează promoție' : 'Promoție nouă'}</DialogTitle>
+              <DialogDescription>Configurează o campanie nouă fără să sacrifici spațiul din dashboard.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => submit(e, () => promotionMutation.mutateAsync())} className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label>Nume</Label><Input value={promotionForm.name} onChange={(e) => setPromotionForm({ ...promotionForm, name: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Valoare</Label><Input type="number" value={promotionForm.value} onChange={(e) => setPromotionForm({ ...promotionForm, value: e.target.value })} className="mt-1.5" /></div>
+                <div>
+                  <Label>Tip reducere</Label>
+                  <Select value={promotionForm.type} onValueChange={(v: 'percentage' | 'fixed') => setPromotionForm({ ...promotionForm, type: v })}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percentage">Procent (%)</SelectItem>
+                      <SelectItem value="fixed">Sumă fixă (lei)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Se aplică pe</Label>
+                  <Select value={promotionForm.scope} onValueChange={(v: 'product' | 'category') => setPromotionForm({ ...promotionForm, scope: v })}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="product">Un produs</SelectItem>
+                      <SelectItem value="category">O categorie</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Început</Label><Input type="date" value={promotionForm.startDate} onChange={(e) => setPromotionForm({ ...promotionForm, startDate: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Sfârșit</Label><Input type="date" value={promotionForm.endDate} onChange={(e) => setPromotionForm({ ...promotionForm, endDate: e.target.value })} className="mt-1.5" /></div>
+              </div>
+
+              {promotionForm.scope === 'product' ? (
+                <div>
+                  <Label>Produs</Label>
+                    <Select value={promotionForm.productId} onValueChange={(v) => setPromotionForm({ ...promotionForm, productId: v })}>
+                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege produsul" /></SelectTrigger>
+                      <SelectContent>{promotionProducts.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+              ) : (
+                <div>
+                  <Label>Categorie</Label>
+                  <Select value={promotionForm.categoryId} onValueChange={(v) => setPromotionForm({ ...promotionForm, categoryId: v })}>
+                    <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege categoria" /></SelectTrigger>
+                    <SelectContent>{categoryOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2 text-sm"><Checkbox checked={promotionForm.active} onCheckedChange={(c) => setPromotionForm({ ...promotionForm, active: Boolean(c) })} /> Promoție activă</label>
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={promotionMutation.isPending}>
+                  {promotionMutation.isPending ? 'Se salvează...' : promotionForm.id ? 'Actualizează' : 'Creează promoția'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         </div>
       </main>

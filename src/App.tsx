@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ProtectedAdminRoute } from "@/components/ProtectedAdminRoute";
 import { CartProvider } from "@/hooks/useCart";
 import { AdminAuthProvider } from "@/hooks/useAdminAuth";
 import { Header } from "@/components/Header";
@@ -22,6 +23,7 @@ import ContactPage from "./pages/ContactPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import CookiesPage from "./pages/CookiesPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 
@@ -53,7 +55,10 @@ const App = () => (
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/cookies" element={<CookiesPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin/login" element={<AdminLoginPage />} />
+                  <Route element={<ProtectedAdminRoute />}>
+                    <Route path="/admin" element={<AdminPage />} />
+                  </Route>
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

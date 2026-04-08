@@ -31,7 +31,7 @@ const normalizeCategory = (category: any): Category => ({
   image: category.image ?? '',
   children: category.children?.map(normalizeCategory) ?? [],
   parent: category.parent ? normalizeCategory(category.parent) : null,
-  productCount: category.products?._count ?? category.productCount ?? 0,
+  productCount: category._count?.products ?? category.productCount ?? 0,
 });
 
 const normalizeBrand = (brand: any): Brand => ({
@@ -138,6 +138,14 @@ type RequestOptions = {
   token?: string;
 };
 
+type UploadResponse = {
+  id: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+};
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
@@ -169,6 +177,35 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return response.json() as Promise<T>;
 }
 
+async function uploadRequest<T>(path: string, file: File, token: string): Promise<T> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let message = 'A apărut o eroare la upload.';
+    try {
+      const errorData = await response.json();
+      message = errorData.message ?? errorData.error ?? message;
+      if (Array.isArray(message)) {
+        message = message.join(', ');
+      }
+    } catch {
+      message = response.statusText || message;
+    }
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 const createQueryString = (params: Record<string, string | number | boolean | undefined>) => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
@@ -192,11 +229,28 @@ export const api = {
         user,
       } as LoginResponse;
     },
+    async refresh(refreshToken: string): Promise<LoginResponse> {
+      const tokens = await request<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
+        method: 'POST',
+        body: { refreshToken },
+      });
+      const user = await request('/auth/me', { token: tokens.accessToken });
+      return {
+        ...tokens,
+        user,
+      } as LoginResponse;
+    },
     async me(token: string) {
       return request('/auth/me', { token });
     },
     async logout(token: string) {
       return request('/auth/logout', { method: 'POST', token });
+    },
+  },
+  uploads: {
+    async uploadImage(token: string, file: File, folder: 'products' | 'categories' | 'brands'): Promise<string> {
+      const response = await uploadRequest<UploadResponse>(`/uploads/image${createQueryString({ folder })}`, file, token);
+      return response.url;
     },
   },
   products: {
@@ -241,8 +295,20 @@ export const api = {
       const response = await request<PaginatedResponse<any>>('/products?featured=true&limit=8');
       return response.items.map(normalizeProduct);
     },
-    async adminGetAll(token: string): Promise<PaginatedResponse<Product>> {
-      const response = await request<PaginatedResponse<any>>('/products/admin/all?limit=100', { token });
+    async adminGetAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string; categoryId?: string; brandId?: string },
+    ): Promise<PaginatedResponse<Product>> {
+      const response = await request<PaginatedResponse<any>>(
+        `/products/admin/all${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 12,
+          search: params?.search,
+          categoryId: params?.categoryId,
+          brandId: params?.brandId,
+        })}`,
+        { token },
+      );
       return { ...response, items: response.items.map(normalizeProduct) };
     },
     async create(token: string, payload: CreateProductPayload): Promise<Product> {
@@ -266,9 +332,19 @@ export const api = {
       const categories = await this.getAll();
       return categories.find((category) => category.slug === slug);
     },
-    async adminGetAll(token: string): Promise<Category[]> {
-      const response = await request<any[]>('/categories/admin/all', { token });
-      return response.map(normalizeCategory);
+    async adminGetAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string },
+    ): Promise<PaginatedResponse<Category>> {
+      const response = await request<PaginatedResponse<any>>(
+        `/categories/admin/all${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 10,
+          search: params?.search,
+        })}`,
+        { token },
+      );
+      return { ...response, items: response.items.map(normalizeCategory) };
     },
     async create(token: string, payload: CreateCategoryPayload): Promise<Category> {
       const response = await request<any>('/categories', { method: 'POST', body: payload, token });
@@ -287,9 +363,19 @@ export const api = {
       const response = await request<any[]>('/brands');
       return response.map(normalizeBrand);
     },
-    async adminGetAll(token: string): Promise<Brand[]> {
-      const response = await request<any[]>('/brands/admin/all', { token });
-      return response.map(normalizeBrand);
+    async adminGetAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string },
+    ): Promise<PaginatedResponse<Brand>> {
+      const response = await request<PaginatedResponse<any>>(
+        `/brands/admin/all${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 10,
+          search: params?.search,
+        })}`,
+        { token },
+      );
+      return { ...response, items: response.items.map(normalizeBrand) };
     },
     async create(token: string, payload: CreateBrandPayload): Promise<Brand> {
       const response = await request<any>('/brands', { method: 'POST', body: payload, token });
@@ -308,9 +394,19 @@ export const api = {
       const response = await request<any[]>('/promotions');
       return response.map(normalizePromotion);
     },
-    async adminGetAll(token: string): Promise<Promotion[]> {
-      const response = await request<any[]>('/promotions/admin/all', { token });
-      return response.map(normalizePromotion);
+    async adminGetAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string },
+    ): Promise<PaginatedResponse<Promotion>> {
+      const response = await request<PaginatedResponse<any>>(
+        `/promotions/admin/all${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 10,
+          search: params?.search,
+        })}`,
+        { token },
+      );
+      return { ...response, items: response.items.map(normalizePromotion) };
     },
     async create(token: string, payload: CreatePromotionPayload): Promise<Promotion> {
       const response = await request<any>('/promotions', { method: 'POST', body: payload, token });
@@ -358,9 +454,19 @@ export const api = {
         },
       });
     },
-    async adminGetAll(token: string): Promise<Order[]> {
-      const response = await request<any[]>('/orders', { token });
-      return response.map(normalizeOrder);
+    async adminGetAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string },
+    ): Promise<PaginatedResponse<Order>> {
+      const response = await request<PaginatedResponse<any>>(
+        `/orders${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 10,
+          search: params?.search,
+        })}`,
+        { token },
+      );
+      return { ...response, items: response.items.map(normalizeOrder) };
     },
   },
 };

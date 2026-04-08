@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
+import { withAssetVersion } from '@/lib/assets';
 
 export default function PromotionsPage() {
   const { data: promos } = useQuery({ queryKey: ['promotions'], queryFn: () => api.promotions.getAll() });
@@ -16,7 +17,7 @@ export default function PromotionsPage() {
         {promos?.map(promo => (
           <div key={promo.id} className="relative rounded-xl overflow-hidden group hover-lift">
             <img
-              src={promo.product?.images?.[0]?.url || promo.category?.image || '/placeholder.svg'}
+              src={promo.product?.images?.[0]?.url || withAssetVersion(promo.category?.image, promo.category?.updatedAt ?? promo.category?.createdAt)}
               alt={promo.name}
               className="w-full h-64 object-cover"
               loading="lazy"

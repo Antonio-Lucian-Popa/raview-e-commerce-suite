@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
+import { withAssetVersion } from '@/lib/assets';
 import heroImage from '@/assets/hero-showroom.jpg';
 
 const benefits = [
@@ -50,7 +51,12 @@ export default function HomePage() {
               <Button size="lg" className="bg-accent text-accent-foreground hover:bg-gold-dark" asChild>
                 <Link to="/shop">Explorează Magazinul <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-background/30 text-background hover:bg-background/10" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-background/35 bg-foreground/25 text-background backdrop-blur-sm hover:bg-background hover:text-foreground"
+                asChild
+              >
                 <Link to="/contact">Vizitează Showroom-ul</Link>
               </Button>
             </div>
@@ -91,7 +97,7 @@ export default function HomePage() {
                 to={`/category/${cat.slug}`}
                 className="group relative aspect-[4/3] rounded-lg overflow-hidden hover-lift"
               >
-                <img src={cat.image || '/placeholder.svg'} alt={cat.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <img src={withAssetVersion(cat.image, cat.updatedAt ?? cat.createdAt)} alt={cat.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
                   <h3 className="font-semibold text-background text-sm md:text-base">{cat.name}</h3>
@@ -120,38 +126,56 @@ export default function HomePage() {
       </section>
 
       {/* Promo Banner */}
-      <section className="bg-gradient-dark text-background">
-        <div className="container-page section-padding">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div className="max-w-lg">
-              <span className="text-accent text-sm font-semibold uppercase tracking-wider">Ofertă Specială</span>
-              <h2 className="text-3xl md:text-5xl font-display font-bold mt-3 mb-4">
-                {topPromotion ? (
-                  <>
-                    {topPromotion.type === 'percentage' ? 'Până la ' : 'Reducere de '}
-                    <span className="text-gradient-gold">
-                      {topPromotion.type === 'percentage' ? `${topPromotion.value}%` : `${topPromotion.value} lei`}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Până la <span className="text-gradient-gold">40% Reducere</span>
-                  </>
-                )}
-              </h2>
-              <p className="text-background/60">
-                {topPromotion?.name ?? 'Profită de cele mai bune oferte la corpuri de iluminat. Reduceri limitate pentru produse de calitate.'}
-              </p>
-              <Button size="lg" className="mt-6 bg-accent text-accent-foreground hover:bg-gold-dark" asChild>
-                <Link to="/promotions">Vezi Ofertele</Link>
-              </Button>
-            </div>
-            <div className="w-72 h-72 rounded-full bg-accent/10 flex items-center justify-center">
-              <span className="text-6xl font-display font-bold text-gradient-gold">-40%</span>
+      {topPromotion && (
+        <section className="bg-gradient-dark text-background">
+          <div className="container-page section-padding">
+            <div className="grid gap-8 overflow-hidden rounded-[2rem] border border-accent/15 bg-background/5 p-8 backdrop-blur-sm lg:grid-cols-[1.2fr_0.8fr] lg:items-center lg:p-12">
+              <div className="max-w-2xl">
+                <span className="inline-flex rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-accent">
+                  Ofertă Specială
+                </span>
+                <h2 className="mt-5 text-3xl font-display font-bold leading-tight md:text-5xl">
+                  {topPromotion.type === 'percentage' ? (
+                    <>
+                      Economisești până la <span className="text-gradient-gold">{topPromotion.value}%</span>
+                    </>
+                  ) : (
+                    <>
+                      Reducere directă de <span className="text-gradient-gold">{topPromotion.value} lei</span>
+                    </>
+                  )}
+                </h2>
+                <p className="mt-4 text-lg text-background/72">
+                  {topPromotion.name}
+                </p>
+                <p className="mt-2 text-sm text-background/50">
+                  Valabilă până la {new Date(topPromotion.endDate).toLocaleDateString('ro-RO')}
+                  {topPromotion.product?.name ? ` pentru ${topPromotion.product.name}` : ''}
+                  {topPromotion.category?.name ? ` în categoria ${topPromotion.category.name}` : ''}
+                </p>
+                <Button size="lg" className="mt-7 bg-accent text-accent-foreground hover:bg-gold-dark" asChild>
+                  <Link to="/promotions">Vezi Ofertele <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                </Button>
+              </div>
+
+              <div className="flex justify-start lg:justify-end">
+                <div className="relative flex h-56 w-56 items-center justify-center rounded-full border border-accent/20 bg-accent/10 shadow-[0_0_80px_rgba(212,165,36,0.12)] md:h-72 md:w-72">
+                  <div className="absolute inset-5 rounded-full border border-accent/10" />
+                  <div className="text-center">
+                    <p className="text-xs uppercase tracking-[0.35em] text-background/45">Oferta</p>
+                    <p className="mt-3 font-display text-5xl font-bold text-gradient-gold md:text-7xl">
+                      {topPromotion.type === 'percentage' ? `-${topPromotion.value}%` : `-${topPromotion.value}`}
+                    </p>
+                    <p className="mt-2 text-sm text-background/55">
+                      {topPromotion.type === 'percentage' ? 'discount' : 'lei'}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Showroom CTA */}
       <section className="section-padding">

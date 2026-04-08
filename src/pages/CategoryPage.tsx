@@ -5,6 +5,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { EmptyState, ErrorState } from '@/components/EmptyError';
 import { api } from '@/lib/api';
+import { withAssetVersion } from '@/lib/assets';
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,7 +30,7 @@ export default function CategoryPage() {
 
       {category && (
         <div className="relative h-48 md:h-64 rounded-xl overflow-hidden mb-8">
-          <img src={category.image || '/placeholder.svg'} alt={category.name} className="w-full h-full object-cover" />
+          <img src={withAssetVersion(category.image, category.updatedAt ?? category.createdAt)} alt={category.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-r from-foreground/70 to-foreground/20 flex items-center">
             <div className="container-page">
               <h1 className="text-3xl md:text-4xl font-display font-bold text-background">{category.name}</h1>
