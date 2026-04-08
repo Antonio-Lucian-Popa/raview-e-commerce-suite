@@ -1,4 +1,5 @@
 import {
+  AdminNotification,
   AuthSession,
   Brand,
   Category,
@@ -251,6 +252,14 @@ export const api = {
     async uploadImage(token: string, file: File, folder: 'products' | 'categories' | 'brands'): Promise<string> {
       const response = await uploadRequest<UploadResponse>(`/uploads/image${createQueryString({ folder })}`, file, token);
       return response.url;
+    },
+  },
+  notifications: {
+    async getRecent(token: string): Promise<AdminNotification[]> {
+      return request<AdminNotification[]>(`/notifications/recent${createQueryString({ token })}`);
+    },
+    getStreamUrl(token: string) {
+      return `${API_BASE_URL}/notifications/stream${createQueryString({ token })}`;
     },
   },
   products: {

@@ -169,6 +169,15 @@ export interface AuthSession {
   user: AdminUser;
 }
 
+export interface AdminNotification {
+  id: string;
+  type: 'new_order' | 'low_stock' | 'out_of_stock';
+  title: string;
+  message: string;
+  createdAt: string;
+  section: 'orders' | 'products';
+}
+
 export interface Order {
   id: string;
   status: string;

@@ -1,4 +1,5 @@
 import {
+  Bell,
   FormEvent,
   ReactNode,
   startTransition,
@@ -34,6 +35,7 @@ import { api } from '@/lib/api';
 import {
   Brand,
   Category,
+  AdminNotification,
   CreateBrandPayload,
   CreateCategoryPayload,
   CreateProductPayload,
@@ -230,6 +232,17 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleDateString('ro-RO');
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  return new Date(value).toLocaleString('ro-RO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function formatOrderStatus(status?: string | null) {
   const labels: Record<string, string> = {
     pending: 'În așteptare',
@@ -365,6 +378,8 @@ export default function AdminPage() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [brandSearch, setBrandSearch] = useState('');
@@ -488,8 +503,8 @@ export default function AdminPage() {
 
   const validateProductForm = () => {
     if (!productForm.name.trim()) return 'Numele produsului este obligatoriu.';
-    if (!productForm.slug.trim()) return 'Slug-ul produsului este obligatoriu.';
-    if (!productForm.sku.trim()) return 'SKU-ul produsului este obligatoriu.';
+    if (!productForm.slug.trim()) return 'Numele din link este obligatoriu.';
+    if (!productForm.sku.trim()) return 'Codul produsului este obligatoriu.';
     if (!productForm.categoryId) return 'Selectează o categorie pentru produs.';
     if (!productForm.brandId) return 'Selectează un brand pentru produs.';
     return null;
@@ -549,6 +564,69 @@ export default function AdminPage() {
   useEffect(() => {
     if (ordersPage > ordersTotalPages) setOrdersPage(ordersTotalPages);
   }, [ordersPage, ordersTotalPages]);
+
+  useEffect(() => {
+    if (!token) {
+      setNotifications([]);
+      return;
+    }
+
+    let isMounted = true;
+    let eventSource: EventSource | null = null;
+
+    const pushNotification = (notification: AdminNotification) => {
+      setNotifications((current) => {
+        const next = [notification, ...current.filter((entry) => entry.id !== notification.id)];
+        return next.slice(0, 20);
+      });
+
+      toast(notification.title, {
+        description: notification.message,
+      });
+
+      if (notification.section === 'orders') {
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'stats', 'orders'] });
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      }
+
+      if (notification.section === 'products') {
+        void queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+      }
+    };
+
+    void api.notifications
+      .getRecent(token)
+      .then((items) => {
+        if (!isMounted) return;
+        setNotifications(items);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setNotifications([]);
+      });
+
+    eventSource = new EventSource(api.notifications.getStreamUrl(token));
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data) as Partial<AdminNotification> & { type?: string };
+        if (!payload || payload.type === 'connected' || !payload.id) {
+          return;
+        }
+        pushNotification(payload as AdminNotification);
+      } catch {
+        // Ignore malformed SSE payloads.
+      }
+    };
+    eventSource.onerror = () => {
+      eventSource?.close();
+    };
+
+    return () => {
+      isMounted = false;
+      eventSource?.close();
+    };
+  }, [token, queryClient]);
 
   /* ── mutations ── */
   const productMutation = useMutation({
@@ -805,6 +883,11 @@ export default function AdminPage() {
     setBrandLogoPreview(URL.createObjectURL(file));
   };
 
+  const openNotificationTarget = (notification: AdminNotification) => {
+    setNotificationsOpen(false);
+    setActiveTab(notification.section);
+  };
+
   /* ════════════════════════════════════════
    *  DASHBOARD
    * ════════════════════════════════════════ */
@@ -812,9 +895,27 @@ export default function AdminPage() {
     <div className="flex min-h-[calc(100vh-var(--header-height))]">
       {/* ── Fixed sidebar ── */}
       <aside className="hidden lg:flex w-64 flex-col border-r border-border/70 bg-card">
-        <div className="p-5 border-b border-border/70">
-          <p className="font-display font-bold text-lg">Ra<span className="text-gradient-gold">View</span> Admin</p>
-          <p className="mt-1 text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+        <div className="border-b border-border/70 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-display font-bold text-lg">Ra<span className="text-gradient-gold">View</span> Admin</p>
+              <p className="mt-1 text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="relative shrink-0"
+              onClick={() => setNotificationsOpen(true)}
+              aria-label="Notificări"
+            >
+              <Bell className="h-4 w-4" />
+              {notifications.length > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
+                  {Math.min(notifications.length, 9)}
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
 
         <nav className="flex-1 p-3 space-y-1">
@@ -850,9 +951,19 @@ export default function AdminPage() {
           </p>
           <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
         </div>
-        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => logout()}>
-          <LogOut className="h-4 w-4" /> Logout
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="relative text-muted-foreground" onClick={() => setNotificationsOpen(true)} aria-label="Notificări">
+            <Bell className="h-4 w-4" />
+            {notifications.length > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
+                {Math.min(notifications.length, 9)}
+              </span>
+            )}
+          </Button>
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => logout()}>
+            <LogOut className="h-4 w-4" /> Ieșire
+          </Button>
+        </div>
       </div>
 
       {/* ── Mobile tab bar ── */}
@@ -1077,6 +1188,35 @@ export default function AdminPage() {
           </Card>
         )}
 
+        <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+          <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Notificări</DialogTitle>
+              <DialogDescription>Vezi rapid ce s-a întâmplat recent în magazin.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <button
+                  key={notification.id}
+                  type="button"
+                  onClick={() => openNotificationTarget(notification)}
+                  className="w-full rounded-xl border border-border/70 bg-secondary/20 p-4 text-left transition-colors hover:bg-secondary/35"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium">{notification.title}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{notification.message}</p>
+                    </div>
+                    <StatusPill>{notification.section === 'orders' ? 'Comenzi' : 'Produse'}</StatusPill>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">{formatDateTime(notification.createdAt)}</p>
+                </button>
+              ))}
+              {notifications.length === 0 && <EmptyBlock message="Nu există notificări noi momentan." />}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={productDialogOpen} onOpenChange={setProductDialogOpen}>
           <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
             <DialogHeader>
@@ -1256,7 +1396,7 @@ export default function AdminPage() {
           <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{promotionForm.id ? 'Editează promoție' : 'Promoție nouă'}</DialogTitle>
-              <DialogDescription>Configurează o campanie nouă fără să sacrifici spațiul din dashboard.</DialogDescription>
+              <DialogDescription>Configurează o campanie nouă fără să aglomerezi pagina de administrare.</DialogDescription>
             </DialogHeader>
             <form onSubmit={(e) => submit(e, () => promotionMutation.mutateAsync())} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
