@@ -230,6 +230,32 @@ function formatDate(value?: string | null) {
   return new Date(value).toLocaleDateString('ro-RO');
 }
 
+function formatOrderStatus(status?: string | null) {
+  const labels: Record<string, string> = {
+    pending: 'În așteptare',
+    paid: 'Plătită',
+    processing: 'În procesare',
+    shipped: 'Trimisă',
+    delivered: 'Livrată',
+    cancelled: 'Anulată',
+    refunded: 'Rambursată',
+  };
+
+  return labels[status ?? ''] ?? status ?? '—';
+}
+
+function formatPaymentStatus(status?: string | null) {
+  const labels: Record<string, string> = {
+    pending: 'Plata în așteptare',
+    requires_action: 'Necesită confirmare',
+    paid: 'Plătită',
+    failed: 'Plata a eșuat',
+    refunded: 'Rambursată',
+  };
+
+  return labels[status ?? ''] ?? status ?? '—';
+}
+
 function getOrderCustomer(order: Order) {
   return (
     order.customerSnapshot ??
@@ -408,6 +434,24 @@ export default function AdminPage() {
     queryFn: () => api.orders.adminGetAll(token, { page: ordersPage, limit: pageSize, search: deferredOrderSearch || undefined }),
     enabled: Boolean(token) && needsOrders,
     placeholderData: (previousData) => previousData,
+  });
+  const { data: statsCategoriesData } = useQuery({
+    queryKey: ['admin', 'stats', 'categories'],
+    queryFn: () => api.categories.adminGetAll(token, { page: 1, limit: 1 }),
+    enabled: Boolean(token),
+    staleTime: 60_000,
+  });
+  const { data: statsPromotionsData } = useQuery({
+    queryKey: ['admin', 'stats', 'promotions'],
+    queryFn: () => api.promotions.adminGetAll(token, { page: 1, limit: 1 }),
+    enabled: Boolean(token),
+    staleTime: 60_000,
+  });
+  const { data: statsOrdersData } = useQuery({
+    queryKey: ['admin', 'stats', 'orders'],
+    queryFn: () => api.orders.adminGetAll(token, { page: 1, limit: 1 }),
+    enabled: Boolean(token),
+    staleTime: 60_000,
   });
 
   const products = productsData?.items ?? [];
@@ -798,6 +842,19 @@ export default function AdminPage() {
         </div>
       </aside>
 
+      {/* ── Mobile top bar ── */}
+      <div className="fixed left-0 right-0 top-0 z-40 flex items-center justify-between border-b border-border/70 bg-card px-4 py-3 lg:hidden">
+        <div>
+          <p className="font-display text-lg font-bold">
+            Ra<span className="text-gradient-gold">View</span> Admin
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
+        </div>
+        <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => logout()}>
+          <LogOut className="h-4 w-4" /> Logout
+        </Button>
+      </div>
+
       {/* ── Mobile tab bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex lg:hidden border-t border-border bg-card">
         {sidebarItems.map((item) => {
@@ -818,9 +875,9 @@ export default function AdminPage() {
       </div>
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-y-auto pb-20 lg:pb-8">
+      <main className="flex-1 overflow-y-auto pb-20 pt-[72px] lg:pb-8 lg:pt-0">
         {/* Stats bar */}
-        <div className="border-b border-border/70 bg-secondary/15 px-6 py-4">
+        <div className="hidden border-b border-border/70 bg-secondary/15 px-6 py-4 lg:block">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Produse</p>
@@ -828,15 +885,15 @@ export default function AdminPage() {
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Categorii</p>
-              <p className="mt-1 text-2xl font-display font-bold">{categoriesData?.meta.total ?? '—'}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{categoriesData?.meta.total ?? statsCategoriesData?.meta.total ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Promoții</p>
-              <p className="mt-1 text-2xl font-display font-bold">{promotionsData?.meta.total ?? '—'}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{promotionsData?.meta.total ?? statsPromotionsData?.meta.total ?? '—'}</p>
             </div>
             <div className="rounded-lg border border-border/70 bg-card px-4 py-3">
               <p className="text-xs text-muted-foreground">Comenzi</p>
-              <p className="mt-1 text-2xl font-display font-bold">{ordersData?.meta.total ?? '—'}</p>
+              <p className="mt-1 text-2xl font-display font-bold">{ordersData?.meta.total ?? statsOrdersData?.meta.total ?? '—'}</p>
             </div>
           </div>
         </div>
@@ -847,7 +904,7 @@ export default function AdminPage() {
         {activeTab === 'products' && (
           <>
             <Card title="Toate produsele" actions={<Button variant="outline" size="sm" onClick={openNewProduct}>Produs nou</Button>}>
-              <SearchToolbar placeholder="Caută după nume, SKU, brand…" value={productSearch} onChange={setProductSearch} countLabel={`${productsData?.meta.total ?? 0} produse`} />
+              <SearchToolbar placeholder="Caută după nume, cod produs sau brand…" value={productSearch} onChange={setProductSearch} countLabel={`${productsData?.meta.total ?? 0} produse`} />
             <div className="mt-4 space-y-2">
                 {filteredProducts.map((product) => (
                   <article key={product.id} className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3 sm:flex-row sm:items-center">
@@ -987,7 +1044,7 @@ export default function AdminPage() {
         {/* ═══════ ORDERS ═══════ */}
         {activeTab === 'orders' && (
             <Card title="Comenzi">
-              <SearchToolbar placeholder="Caută după client, email sau status…" value={orderSearch} onChange={setOrderSearch} countLabel={`${ordersData?.meta.total ?? 0} comenzi`} />
+              <SearchToolbar placeholder="Caută după client, email sau stare comandă…" value={orderSearch} onChange={setOrderSearch} countLabel={`${ordersData?.meta.total ?? 0} comenzi`} />
               <div className="mt-4 space-y-2">
               {filteredOrders.map((order) => {
                 const customer = getOrderCustomer(order);
@@ -996,8 +1053,8 @@ export default function AdminPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="font-medium text-sm">#{order.id.slice(-8).toUpperCase()}</p>
-                        <StatusPill>{order.status}</StatusPill>
-                        <StatusPill>{order.paymentStatus}</StatusPill>
+                        <StatusPill>{formatOrderStatus(order.status)}</StatusPill>
+                        <StatusPill>{formatPaymentStatus(order.paymentStatus)}</StatusPill>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">{customer.firstName} {customer.lastName} · {customer.email}</p>
                       {order.addressSnapshot && <p className="text-xs text-muted-foreground">{order.addressSnapshot.line1}, {order.addressSnapshot.city}</p>}
@@ -1031,8 +1088,8 @@ export default function AdminPage() {
                 <div className="space-y-4">
                   <div><Label>Nume produs</Label><Input value={productForm.name} onChange={(e) => setProductForm({ ...productForm, name: e.target.value })} className="mt-1.5" /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Slug</Label><Input value={productForm.slug} onChange={(e) => setProductForm({ ...productForm, slug: e.target.value })} className="mt-1.5" /></div>
-                    <div><Label>SKU</Label><Input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} className="mt-1.5" /></div>
+                    <div><Label>Nume în link</Label><Input value={productForm.slug} onChange={(e) => setProductForm({ ...productForm, slug: e.target.value })} className="mt-1.5" /></div>
+                    <div><Label>Cod produs</Label><Input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} className="mt-1.5" /></div>
                   </div>
                   <div><Label>Descriere</Label><Textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="mt-1.5 min-h-28" /></div>
                   <div className="grid grid-cols-3 gap-3">
@@ -1101,7 +1158,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div><Label>Specificații (JSON)</Label><Textarea value={productForm.specs} onChange={(e) => setProductForm({ ...productForm, specs: e.target.value })} className="mt-1.5 min-h-28 font-mono text-xs" placeholder='{"material": "aluminiu"}' /></div>
+                  <div><Label>Detalii produs</Label><Textarea value={productForm.specs} onChange={(e) => setProductForm({ ...productForm, specs: e.target.value })} className="mt-1.5 min-h-28 font-mono text-xs" placeholder='{"material": "aluminiu"}' /></div>
 
                   <div className="grid grid-cols-2 gap-3 rounded-lg bg-secondary/35 p-3">
                     <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.featured} onCheckedChange={(c) => setProductForm({ ...productForm, featured: Boolean(c) })} /> Recomandat</label>
@@ -1130,7 +1187,7 @@ export default function AdminPage() {
             <form onSubmit={(e) => submit(e, () => categoryMutation.mutateAsync())} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div><Label>Nume</Label><Input value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} className="mt-1.5" /></div>
-                <div><Label>Slug</Label><Input value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Nume în link</Label><Input value={categoryForm.slug} onChange={(e) => setCategoryForm({ ...categoryForm, slug: e.target.value })} className="mt-1.5" /></div>
                 <div className="space-y-2">
                   <Label>Imagine categorie</Label>
                   <Input type="file" accept="image/*" onChange={(e) => updateCategoryImageFile(e.target.files?.[0])} className="mt-1.5" />
@@ -1142,7 +1199,7 @@ export default function AdminPage() {
                   )}
                 </div>
                 <div>
-                  <Label>Categorie părinte</Label>
+                  <Label>Categorie principală</Label>
                   <Select value={categoryForm.parentId || 'none'} onValueChange={(v) => setCategoryForm({ ...categoryForm, parentId: v === 'none' ? '' : v })}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1172,9 +1229,9 @@ export default function AdminPage() {
             <form onSubmit={(e) => submit(e, () => brandMutation.mutateAsync())} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div><Label>Nume</Label><Input value={brandForm.name} onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })} className="mt-1.5" /></div>
-                <div><Label>Slug</Label><Input value={brandForm.slug} onChange={(e) => setBrandForm({ ...brandForm, slug: e.target.value })} className="mt-1.5" /></div>
+                <div><Label>Nume în link</Label><Input value={brandForm.slug} onChange={(e) => setBrandForm({ ...brandForm, slug: e.target.value })} className="mt-1.5" /></div>
                 <div className="space-y-2">
-                  <Label>Logo brand</Label>
+                  <Label>Siglă brand</Label>
                   <Input type="file" accept="image/*" onChange={(e) => updateBrandLogoFile(e.target.files?.[0])} className="mt-1.5" />
                   <p className="text-xs text-muted-foreground">{brandLogoFile ? 'Fișier selectat. Se va încărca la salvarea brandului.' : 'Încarcă logo-ul din calculator.'}</p>
                   {brandLogoPreview && (
@@ -1206,7 +1263,7 @@ export default function AdminPage() {
                 <div><Label>Nume</Label><Input value={promotionForm.name} onChange={(e) => setPromotionForm({ ...promotionForm, name: e.target.value })} className="mt-1.5" /></div>
                 <div><Label>Valoare</Label><Input type="number" value={promotionForm.value} onChange={(e) => setPromotionForm({ ...promotionForm, value: e.target.value })} className="mt-1.5" /></div>
                 <div>
-                  <Label>Tip reducere</Label>
+                  <Label>Reducere</Label>
                   <Select value={promotionForm.type} onValueChange={(v: 'percentage' | 'fixed') => setPromotionForm({ ...promotionForm, type: v })}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1216,7 +1273,7 @@ export default function AdminPage() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Se aplică pe</Label>
+                  <Label>Unde se aplică</Label>
                   <Select value={promotionForm.scope} onValueChange={(v: 'product' | 'category') => setPromotionForm({ ...promotionForm, scope: v })}>
                     <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                     <SelectContent>
