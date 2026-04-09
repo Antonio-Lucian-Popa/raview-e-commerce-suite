@@ -26,6 +26,7 @@ import CookiesPage from "./pages/CookiesPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const AppShell = () => {
       {!isAdminRoute && <Header />}
       {!isAdminRoute && <CartDrawer />}
       <main className="flex-1">
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />

@@ -11,6 +11,7 @@ import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/re
 import {
   Bell,
   LayoutGrid,
+  Loader2,
   LogOut,
   Megaphone,
   Package2,
@@ -291,6 +292,22 @@ function EmptyBlock({ message }: { message: string }) {
   return <div className="rounded-xl border border-dashed border-border bg-secondary/20 px-6 py-10 text-center text-sm text-muted-foreground">{message}</div>;
 }
 
+function LoadingBlock({ message }: { message: string }) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-secondary/15 p-5">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <Loader2 className="h-4 w-4 animate-spin text-accent" />
+        {message}
+      </div>
+      <div className="mt-4 space-y-3">
+        <div className="h-12 animate-pulse rounded-lg bg-secondary/60" />
+        <div className="h-20 animate-pulse rounded-lg bg-secondary/60" />
+        <div className="h-20 animate-pulse rounded-lg bg-secondary/60" />
+      </div>
+    </div>
+  );
+}
+
 function SearchToolbar({ placeholder, value, onChange, countLabel }: { placeholder: string; value: string; onChange: (v: string) => void; countLabel: string }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -405,19 +422,19 @@ export default function AdminPage() {
   const needsPromotions = activeTab === 'promotions' || promotionDialogOpen;
   const needsOrders = activeTab === 'orders';
 
-  const { data: productsData } = useQuery({
+  const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['admin', 'products', productsPage, deferredProductSearch],
     queryFn: () => api.products.adminGetAll(token, { page: productsPage, limit: pageSize, search: deferredProductSearch || undefined }),
     enabled: Boolean(token) && needsProducts,
     placeholderData: (previousData) => previousData,
   });
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['admin', 'categories', categoriesPage, deferredCategorySearch],
     queryFn: () => api.categories.adminGetAll(token, { page: categoriesPage, limit: pageSize, search: deferredCategorySearch || undefined }),
     enabled: Boolean(token) && needsCategories,
     placeholderData: (previousData) => previousData,
   });
-  const { data: brandsData } = useQuery({
+  const { data: brandsData, isLoading: brandsLoading } = useQuery({
     queryKey: ['admin', 'brands', brandsPage, deferredBrandSearch],
     queryFn: () => api.brands.adminGetAll(token, { page: brandsPage, limit: pageSize, search: deferredBrandSearch || undefined }),
     enabled: Boolean(token) && needsBrands,
@@ -438,13 +455,13 @@ export default function AdminPage() {
     queryFn: () => api.products.adminGetAll(token, { page: 1, limit: 100 }),
     enabled: Boolean(token) && promotionDialogOpen,
   });
-  const { data: promotionsData } = useQuery({
+  const { data: promotionsData, isLoading: promotionsLoading } = useQuery({
     queryKey: ['admin', 'promotions', promotionsPage, deferredPromotionSearch],
     queryFn: () => api.promotions.adminGetAll(token, { page: promotionsPage, limit: pageSize, search: deferredPromotionSearch || undefined }),
     enabled: Boolean(token) && needsPromotions,
     placeholderData: (previousData) => previousData,
   });
-  const { data: ordersData } = useQuery({
+  const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ['admin', 'orders', ordersPage, deferredOrderSearch],
     queryFn: () => api.orders.adminGetAll(token, { page: ordersPage, limit: pageSize, search: deferredOrderSearch || undefined }),
     enabled: Boolean(token) && needsOrders,
@@ -1017,6 +1034,10 @@ export default function AdminPage() {
             <Card title="Toate produsele" actions={<Button variant="outline" size="sm" onClick={openNewProduct}>Produs nou</Button>}>
               <SearchToolbar placeholder="Caută după nume, cod produs sau brand…" value={productSearch} onChange={setProductSearch} countLabel={`${productsData?.meta.total ?? 0} produse`} />
             <div className="mt-4 space-y-2">
+                {productsLoading && !productsData ? (
+                  <LoadingBlock message="Se încarcă produsele..." />
+                ) : (
+                  <>
                 {filteredProducts.map((product) => (
                   <article key={product.id} className="flex flex-col gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3 sm:flex-row sm:items-center">
                     <img src={product.images[0]?.url || '/placeholder.svg'} alt={product.name} className="h-14 w-14 rounded-lg object-cover flex-shrink-0" />
@@ -1041,6 +1062,8 @@ export default function AdminPage() {
                   onPrevious={() => setProductsPage((page) => Math.max(1, page - 1))}
                   onNext={() => setProductsPage((page) => Math.min(productsTotalPages, page + 1))}
                 />
+                  </>
+                )}
               </div>
             </Card>
           </>
@@ -1052,6 +1075,10 @@ export default function AdminPage() {
             <Card title="Toate categoriile" actions={<Button variant="outline" size="sm" onClick={openNewCategory}>Categorie nouă</Button>}>
               <SearchToolbar placeholder="Caută categorie…" value={categorySearch} onChange={setCategorySearch} countLabel={`${categoriesData?.meta.total ?? 0} categorii`} />
             <div className="mt-4 space-y-2">
+                {categoriesLoading && !categoriesData ? (
+                  <LoadingBlock message="Se încarcă categoriile..." />
+                ) : (
+                  <>
                 {filteredCategories.map((cat) => (
                   <article key={cat.id} className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent"><LayoutGrid className="h-4 w-4" /></div>
@@ -1075,6 +1102,8 @@ export default function AdminPage() {
                   onPrevious={() => setCategoriesPage((page) => Math.max(1, page - 1))}
                   onNext={() => setCategoriesPage((page) => Math.min(categoriesTotalPages, page + 1))}
                 />
+                  </>
+                )}
               </div>
             </Card>
           </>
@@ -1085,6 +1114,12 @@ export default function AdminPage() {
           <>
             <Card title="Toate brandurile" actions={<Button variant="outline" size="sm" onClick={openNewBrand}>Brand nou</Button>}>
               <SearchToolbar placeholder="Caută brand…" value={brandSearch} onChange={setBrandSearch} countLabel={`${brandsData?.meta.total ?? 0} branduri`} />
+              {brandsLoading && !brandsData ? (
+                <div className="mt-4">
+                  <LoadingBlock message="Se încarcă brandurile..." />
+                </div>
+              ) : (
+              <>
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {filteredBrands.map((brand) => (
                   <article key={brand.id} className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/15 p-3">
@@ -1109,6 +1144,8 @@ export default function AdminPage() {
                 onPrevious={() => setBrandsPage((page) => Math.max(1, page - 1))}
                 onNext={() => setBrandsPage((page) => Math.min(brandsTotalPages, page + 1))}
               />
+              </>
+              )}
             </Card>
           </>
         )}
@@ -1118,6 +1155,12 @@ export default function AdminPage() {
           <>
             <Card title="Toate promoțiile" actions={<Button variant="outline" size="sm" onClick={openNewPromotion}>Promoție nouă</Button>}>
               <SearchToolbar placeholder="Caută promoție…" value={promotionSearch} onChange={setPromotionSearch} countLabel={`${promotionsData?.meta.total ?? 0} promoții`} />
+              {promotionsLoading && !promotionsData ? (
+                <div className="mt-4">
+                  <LoadingBlock message="Se încarcă promoțiile..." />
+                </div>
+              ) : (
+              <>
               <div className="mt-4 grid gap-2 md:grid-cols-2">
                 {filteredPromotions.map((promo) => (
                   <article key={promo.id} className="rounded-lg border border-border/70 bg-secondary/15 p-3">
@@ -1148,6 +1191,8 @@ export default function AdminPage() {
                 onPrevious={() => setPromotionsPage((page) => Math.max(1, page - 1))}
                 onNext={() => setPromotionsPage((page) => Math.min(promotionsTotalPages, page + 1))}
               />
+              </>
+              )}
             </Card>
           </>
         )}
@@ -1157,6 +1202,10 @@ export default function AdminPage() {
             <Card title="Comenzi">
               <SearchToolbar placeholder="Caută după client, email sau stare comandă…" value={orderSearch} onChange={setOrderSearch} countLabel={`${ordersData?.meta.total ?? 0} comenzi`} />
               <div className="mt-4 space-y-2">
+              {ordersLoading && !ordersData ? (
+                <LoadingBlock message="Se încarcă comenzile..." />
+              ) : (
+                <>
               {filteredOrders.map((order) => {
                 const customer = getOrderCustomer(order);
                 return (
@@ -1184,6 +1233,8 @@ export default function AdminPage() {
                 onPrevious={() => setOrdersPage((page) => Math.max(1, page - 1))}
                 onNext={() => setOrdersPage((page) => Math.min(ordersTotalPages, page + 1))}
               />
+                </>
+              )}
             </div>
           </Card>
         )}

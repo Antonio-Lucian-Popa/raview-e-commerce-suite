@@ -292,6 +292,34 @@ export const api = {
       }
       return items;
     },
+    async getCatalogPage(
+      filters?: Partial<FilterState> & { page?: number; limit?: number },
+    ): Promise<PaginatedResponse<Product>> {
+      const sortMap: Record<string, { sortBy?: string; sortOrder?: string }> = {
+        newest: { sortBy: 'createdAt', sortOrder: 'desc' },
+        'price-asc': { sortBy: 'price', sortOrder: 'asc' },
+        'price-desc': { sortBy: 'price', sortOrder: 'desc' },
+        name: { sortBy: 'name', sortOrder: 'asc' },
+      };
+      const sort = sortMap[filters?.sortBy ?? 'newest'] ?? sortMap.newest;
+      const response = await request<PaginatedResponse<any>>(
+        `/products${createQueryString({
+          page: filters?.page ?? 1,
+          limit: filters?.limit ?? 12,
+          categoryId: filters?.categoryId,
+          brandIds: filters?.brandIds?.length ? filters.brandIds.join(',') : undefined,
+          inStock: filters?.inStock || undefined,
+          search: filters?.search,
+          sortBy: sort.sortBy,
+          sortOrder: sort.sortOrder,
+        })}`,
+      );
+
+      return {
+        ...response,
+        items: response.items.map(normalizeProduct),
+      };
+    },
     async getBySlug(slug: string): Promise<Product> {
       const response = await request<any>(`/products/slug/${slug}`);
       return normalizeProduct(response);
