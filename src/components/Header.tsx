@@ -1,7 +1,22 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ShoppingBag, Menu, X, Phone, MapPin, ChevronDown } from 'lucide-react';
+import {
+  Briefcase,
+  ChevronDown,
+  Gift,
+  Grid3X3,
+  Home,
+  MapPin,
+  Menu,
+  MessageCircle,
+  PackageSearch,
+  Phone,
+  Search,
+  ShoppingBag,
+  Sparkles,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
@@ -16,8 +31,18 @@ const baseNavLinks: NavLink[] = [
   { label: 'Acasă', href: '/' },
   { label: 'Magazine', href: '/shop' },
   { label: 'Oferte', href: '/promotions' },
+  { label: 'Comanda mea', href: '/track-order' },
   { label: 'Portofoliu', href: '/portfolio' },
   { label: 'Contact', href: '/contact' },
+];
+
+const mobileQuickLinks = [
+  { label: 'Acasă', href: '/', icon: Home },
+  { label: 'Magazin', href: '/shop', icon: Grid3X3 },
+  { label: 'Oferte', href: '/promotions', icon: Gift },
+  { label: 'Comanda mea', href: '/track-order', icon: PackageSearch },
+  { label: 'Portofoliu', href: '/portfolio', icon: Briefcase },
+  { label: 'Contact', href: '/contact', icon: MessageCircle },
 ];
 
 export function Header() {
@@ -46,7 +71,7 @@ export function Header() {
   return (
     <>
       {/* Top bar */}
-      <div className="bg-primary">
+      <div className="hidden bg-primary sm:block">
         <div className="container-page flex items-center justify-between py-2 text-xs text-primary-foreground/80">
           <div className="flex items-center gap-4">
             <a href="tel:0743687059" className="flex items-center gap-1 hover:text-primary-foreground transition-colors">
@@ -62,9 +87,10 @@ export function Header() {
 
       {/* Main header */}
       <header className="sticky top-0 z-50 glass border-b">
-        <div className="container-page flex items-center justify-between h-[var(--header-height)]">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-2xl font-display font-bold tracking-tight">
+        <div className="container-page flex min-h-[var(--header-height)] flex-col justify-center py-2 lg:h-[var(--header-height)] lg:py-0">
+          <div className="flex items-center justify-between gap-3">
+          <Link to="/" className="flex min-w-0 items-center gap-2">
+            <span className="text-xl font-display font-bold tracking-tight sm:text-2xl">
               Ra<span className="text-gradient-gold">View</span>
             </span>
             <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground -mb-1 hidden sm:block">Lighting</span>
@@ -118,9 +144,9 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {searchOpen ? (
-              <div className="flex items-center gap-2">
+              <div className="hidden items-center gap-2 sm:flex">
                 <input
                   type="text"
                   value={searchQuery}
@@ -139,11 +165,11 @@ export function Header() {
                 </Button>
               </div>
             ) : (
-              <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)}>
+              <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} aria-label="Caută">
                 <Search className="h-5 w-5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="relative" onClick={() => setIsOpen(true)}>
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setIsOpen(true)} aria-label="Coș">
               <ShoppingBag className="h-5 w-5" />
               {totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center">
@@ -151,51 +177,137 @@ export function Header() {
                 </span>
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}>
-              <Menu className="h-5 w-5" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-2 rounded-full border-accent/40 bg-accent/10 px-3 text-accent hover:bg-accent hover:text-accent-foreground lg:hidden"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-4 w-4" />
+              Meniu
             </Button>
           </div>
+          </div>
+
+          {searchOpen && (
+            <form
+              className="mt-3 flex gap-2 sm:hidden"
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (searchQuery.trim()) {
+                  window.location.href = `/shop?search=${encodeURIComponent(searchQuery.trim())}`;
+                }
+              }}
+            >
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Caută corpuri de iluminat..."
+                className="h-10 min-w-0 flex-1 rounded-full border bg-background px-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                autoFocus
+              />
+              <Button type="button" variant="ghost" size="icon" onClick={() => { setSearchOpen(false); setSearchQuery(''); }} aria-label="Închide căutarea">
+                <X className="h-4 w-4" />
+              </Button>
+            </form>
+          )}
         </div>
       </header>
 
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="fixed inset-0 z-[60] lg:hidden">
-          <div className="absolute inset-0 bg-foreground/40" onClick={() => setMobileOpen(false)} />
-          <div className="absolute right-0 top-0 bottom-0 w-80 bg-background shadow-2xl animate-slide-up overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b">
-              <span className="font-display font-bold text-lg">Menu</span>
-              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)}>
+          <div className="absolute inset-0 bg-primary/55 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-[2rem] border border-border/70 bg-background shadow-2xl animate-slide-up">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/70 bg-background/95 p-5 backdrop-blur">
+              <div>
+                <p className="font-display text-xl font-bold">
+                  Ra<span className="text-gradient-gold">View</span>
+                </p>
+                <p className="text-xs text-muted-foreground">Navigare rapidă</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} aria-label="Închide meniul">
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <nav className="p-4 space-y-1">
-              {navLinks.map(link => (
-                <div key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="block py-3 px-3 text-sm font-medium rounded-md hover:bg-secondary transition-colors"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {link.label}
-                  </Link>
-                  {link.children && (
-                    <div className="ml-4 space-y-1">
-                      {link.children.map(child => (
-                        <Link
-                          key={child.href}
-                          to={child.href}
-                          className="block py-2 px-3 text-sm text-muted-foreground hover:text-foreground rounded-md hover:bg-secondary transition-colors"
-                          onClick={() => setMobileOpen(false)}
-                        >
-                          {child.label}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+
+            <div className="space-y-6 p-5 pb-8">
+              <Link
+                to="/shop"
+                onClick={() => setMobileOpen(false)}
+                className="group flex items-center justify-between overflow-hidden rounded-2xl bg-primary p-4 text-primary-foreground shadow-lg"
+              >
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-accent">Magazin</p>
+                  <p className="mt-1 font-display text-2xl font-bold">Vezi colecția</p>
+                  <p className="mt-1 text-sm text-primary-foreground/70">Corpuri de iluminat pentru orice spațiu.</p>
                 </div>
-              ))}
-            </nav>
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground transition-transform group-hover:translate-x-1">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+              </Link>
+
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Acces rapid</p>
+                <nav className="grid grid-cols-2 gap-2">
+                  {mobileQuickLinks.map((link) => {
+                    const Icon = link.icon;
+                    const active = location.pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        to={link.href}
+                        className={`flex items-center gap-3 rounded-2xl border p-3 text-sm font-medium transition-colors ${
+                          active ? 'border-accent bg-accent/10 text-accent' : 'border-border/70 bg-secondary/30 hover:bg-secondary'
+                        }`}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              </div>
+
+              {categories.length > 0 && (
+                <div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Categorii</p>
+                    <Link to="/shop" className="text-xs font-medium text-accent" onClick={() => setMobileOpen(false)}>
+                      Vezi toate
+                    </Link>
+                  </div>
+                  <div className="grid gap-2">
+                    {categories.slice(0, 6).map((category) => (
+                      <Link
+                        key={category.id}
+                        to={`/category/${category.slug}`}
+                        className="flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-medium transition-colors hover:border-accent/50 hover:bg-accent/5"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {category.name}
+                        <span className="text-xs text-muted-foreground">{category.productCount ?? 0} produse</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <a href="tel:0743687059" className="rounded-2xl border border-border/70 bg-secondary/30 p-4 text-sm">
+                  <Phone className="mb-2 h-4 w-4 text-accent" />
+                  <span className="font-medium">Sună-ne</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">0743 687 059</span>
+                </a>
+                <Link to="/contact" onClick={() => setMobileOpen(false)} className="rounded-2xl border border-border/70 bg-secondary/30 p-4 text-sm">
+                  <MapPin className="mb-2 h-4 w-4 text-accent" />
+                  <span className="font-medium">Showroom</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">Bacău</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       )}

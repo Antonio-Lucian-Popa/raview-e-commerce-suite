@@ -16,6 +16,7 @@ import ProductPage from "./pages/ProductPage";
 import CartPage from "./pages/CartPage";
 import CheckoutPage from "./pages/CheckoutPage";
 import OrderSuccessPage from "./pages/OrderSuccessPage";
+import TrackOrderPage from "./pages/TrackOrderPage";
 import PromotionsPage from "./pages/PromotionsPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import PortfolioDetailPage from "./pages/PortfolioDetailPage";
@@ -48,6 +49,7 @@ const AppShell = () => {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/order-success" element={<OrderSuccessPage />} />
+          <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/promotions" element={<PromotionsPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/portfolio/:slug" element={<PortfolioDetailPage />} />

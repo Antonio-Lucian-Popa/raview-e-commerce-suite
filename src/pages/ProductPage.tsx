@@ -11,6 +11,79 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
+import {
+  formatLei,
+  getProductLineTotalWithVat,
+  getProductOldPriceWithVat,
+  getProductPriceWithVat,
+  getProductPriceWithoutVat,
+  getVatLabel,
+} from '@/lib/pricing';
+import { Product } from '@/types';
+
+const hiddenSpecKeys = new Set([
+  'source',
+  'sourceRow',
+  'resourceLinks',
+  'attributes',
+  'importedFrom',
+  'importRow',
+]);
+
+const specLabels: Record<string, string> = {
+  productCode: 'Cod produs',
+  code: 'Cod produs',
+  material: 'Material',
+  color: 'Culoare',
+  colour: 'Culoare',
+  finish: 'Finisaj',
+  power: 'Putere',
+  voltage: 'Tensiune',
+  dimensions: 'Dimensiuni',
+  diameter: 'Diametru',
+  height: 'Înălțime',
+  width: 'Lățime',
+  length: 'Lungime',
+  protection: 'Protecție',
+  warranty: 'Garanție',
+};
+
+function formatSpecLabel(key: string) {
+  return specLabels[key] ?? key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function formatSpecValue(value: unknown) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map(formatSpecValue)
+      .filter(Boolean)
+      .join(', ');
+  }
+  return '';
+}
+
+function getDisplaySpecs(product: Product) {
+  const baseSpecs = [
+    { label: 'Cod produs', value: product.specs?.productCode ?? product.sku },
+    { label: 'Brand', value: product.brand?.name },
+    { label: 'Categorie', value: product.category?.name },
+    { label: 'Disponibilitate', value: product.stock > 0 ? `În stoc (${product.stock} buc.)` : 'Stoc epuizat' },
+  ];
+
+  const extraSpecs = Object.entries(product.specs ?? {})
+    .filter(([key]) => !hiddenSpecKeys.has(key) && key !== 'productCode')
+    .map(([key, value]) => ({
+      label: formatSpecLabel(key),
+      value: formatSpecValue(value),
+    }))
+    .filter((item) => item.value);
+
+  return [...baseSpecs, ...extraSpecs].filter((item) => item.value);
+}
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -33,6 +106,14 @@ export default function ProductPage() {
   if (isLoading) return <PageSkeleton />;
   if (error || !product) return <ErrorState message="Produsul nu a fost găsit." />;
 
+  const displaySpecs = getDisplaySpecs(product);
+  const canIncreaseQuantity = product.stock > 0 && quantity < product.stock;
+  const canDecreaseQuantity = quantity > 1;
+  const priceWithoutVat = getProductPriceWithoutVat(product);
+  const priceWithVat = getProductPriceWithVat(product);
+  const oldPriceWithVat = getProductOldPriceWithVat(product);
+  const lineTotalWithVat = getProductLineTotalWithVat(product, quantity);
+
   return (
     <div className="container-page pb-16">
       <Breadcrumbs items={[
@@ -52,7 +133,7 @@ export default function ProductPage() {
         brand: { "@type": "Brand", name: product.brand?.name },
         offers: {
           "@type": "Offer",
-          price: product.price,
+          price: Number(priceWithVat.toFixed(2)),
           priceCurrency: "RON",
           availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
         },
@@ -97,13 +178,23 @@ export default function ProductPage() {
           </div>
 
           <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold">{product.price} lei</span>
-            {product.oldPrice && (
+            <span className="text-3xl font-bold">{formatLei(priceWithVat)}</span>
+            {oldPriceWithVat && (
               <>
-                <span className="text-lg text-muted-foreground line-through">{product.oldPrice} lei</span>
-                <Badge variant="destructive">-{Math.round((1 - product.price / product.oldPrice!) * 100)}%</Badge>
+                <span className="text-lg text-muted-foreground line-through">{formatLei(oldPriceWithVat)}</span>
+                <Badge variant="destructive">-{Math.round((1 - priceWithVat / oldPriceWithVat) * 100)}%</Badge>
               </>
             )}
+          </div>
+          <div className="rounded-lg border border-border/70 bg-secondary/30 px-4 py-3 text-sm">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">Preț fără TVA</span>
+              <span className="font-medium">{formatLei(priceWithoutVat)}</span>
+            </div>
+            <div className="mt-1 flex justify-between gap-4 font-semibold">
+              <span>Total cu TVA 21%</span>
+              <span>{formatLei(priceWithVat)}</span>
+            </div>
           </div>
 
           <p className="text-muted-foreground">{product.seoDescription || product.description}</p>
@@ -116,14 +207,28 @@ export default function ProductPage() {
             )}
           </div>
 
+          <div className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-foreground">
+            Termen de livrare: 2-3 săptămâni
+          </div>
+
           {/* Quantity + Add to cart */}
           <div className="flex items-center gap-4 pt-2">
             <div className="flex items-center border rounded-md">
-              <button className="p-3 hover:bg-secondary transition-colors" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <button
+                className="p-3 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={!canDecreaseQuantity}
+                aria-label="Scade cantitatea"
+              >
                 <Minus className="h-4 w-4" />
               </button>
               <span className="w-12 text-center font-medium">{quantity}</span>
-              <button className="p-3 hover:bg-secondary transition-colors" onClick={() => setQuantity(quantity + 1)}>
+              <button
+                className="p-3 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                disabled={!canIncreaseQuantity}
+                aria-label="Crește cantitatea"
+              >
                 <Plus className="h-4 w-4" />
               </button>
             </div>
@@ -133,7 +238,7 @@ export default function ProductPage() {
               disabled={product.stock <= 0}
               onClick={() => addItem(product, quantity)}
             >
-              <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș
+              <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș · {formatLei(lineTotalWithVat)}
             </Button>
           </div>
 
@@ -165,16 +270,16 @@ export default function ProductPage() {
         </TabsContent>
         <TabsContent value="specs" className="mt-6">
           <div className="max-w-lg">
-            {Object.entries(product.specs ?? {}).map(([key, val]) => (
-              <div key={key} className="flex justify-between py-3 border-b last:border-0 text-sm">
-                <span className="text-muted-foreground">{key}</span>
-                <span className="font-medium">{String(val)}</span>
+            {displaySpecs.map((spec) => (
+              <div key={spec.label} className="flex justify-between gap-6 py-3 border-b last:border-0 text-sm">
+                <span className="text-muted-foreground">{spec.label}</span>
+                <span className="text-right font-medium">{spec.value}</span>
               </div>
             ))}
           </div>
         </TabsContent>
         <TabsContent value="delivery" className="mt-6 text-sm text-muted-foreground space-y-3">
-          <p><strong>Livrare:</strong> Livrare în 2-5 zile lucrătoare. Gratuită pentru comenzi peste 500 lei.</p>
+          <p><strong>Livrare:</strong> Livrare în 2-3 săptămâni. Gratuită pentru comenzi peste 500 lei.</p>
           <p><strong>Plată:</strong> Card bancar, transfer bancar, ramburs la livrare.</p>
           <p><strong>Retur:</strong> 30 de zile de la primirea produsului, în ambalajul original.</p>
         </TabsContent>
@@ -191,8 +296,9 @@ export default function ProductPage() {
       {/* Mobile sticky CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex items-center gap-3 lg:hidden z-40">
         <div>
-          <span className="font-bold">{product.price} lei</span>
-          {product.oldPrice && <span className="text-xs text-muted-foreground line-through ml-1">{product.oldPrice} lei</span>}
+          <span className="font-bold">{formatLei(priceWithVat)}</span>
+          {oldPriceWithVat && <span className="text-xs text-muted-foreground line-through ml-1">{formatLei(oldPriceWithVat)}</span>}
+          <p className="text-[11px] text-muted-foreground">{getVatLabel()}</p>
         </div>
         <Button
           className="flex-1 bg-accent text-accent-foreground hover:bg-gold-dark"

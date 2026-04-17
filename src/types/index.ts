@@ -58,6 +58,8 @@ export interface Product {
   sku: string;
   price: number;
   oldPrice?: number | null;
+  currency?: 'RON' | 'EUR' | string | null;
+  exchangeRate?: number | null;
   stock: number;
   featured: boolean;
   bestseller: boolean;
@@ -116,6 +118,8 @@ export interface CartItem {
   quantity: number;
 }
 
+export type PaymentMethod = 'card' | 'cash_on_delivery';
+
 export interface CheckoutFormData {
   firstName: string;
   lastName: string;
@@ -132,6 +136,8 @@ export interface FilterState {
   categoryId?: string;
   brandIds: string[];
   inStock: boolean;
+  minPrice?: number;
+  maxPrice?: number;
   sortBy: string;
   search: string;
 }
@@ -176,6 +182,7 @@ export interface AdminNotification {
   message: string;
   createdAt: string;
   section: 'orders' | 'products';
+  read?: boolean;
 }
 
 export interface Order {

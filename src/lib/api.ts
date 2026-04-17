@@ -11,6 +11,7 @@ import {
   FilterState,
   LoginResponse,
   Order,
+  PaymentMethod,
   PaginatedResponse,
   PortfolioProject,
   Product,
@@ -63,6 +64,8 @@ const normalizeProduct = (product: any): Product => {
     ...product,
     price,
     oldPrice,
+    currency: product.currency ?? product.specs?.currency ?? 'RON',
+    exchangeRate: product.exchangeRate == null ? null : parseNumber(product.exchangeRate),
     stock: Number(product.stock ?? 0),
     featured: Boolean(product.featured),
     bestseller: Boolean(product.bestseller),
@@ -258,6 +261,12 @@ export const api = {
     async getRecent(token: string): Promise<AdminNotification[]> {
       return request<AdminNotification[]>(`/notifications/recent${createQueryString({ token })}`);
     },
+    async markAsRead(token: string, ids?: string[]): Promise<AdminNotification[]> {
+      return request<AdminNotification[]>(`/notifications/read${createQueryString({ token })}`, {
+        method: 'POST',
+        body: { ids },
+      });
+    },
     getStreamUrl(token: string) {
       return `${API_BASE_URL}/notifications/stream${createQueryString({ token })}`;
     },
@@ -277,6 +286,8 @@ export const api = {
           brandId: filters?.brandIds?.[0],
           featured: undefined,
           search: filters?.search,
+          minPrice: filters?.minPrice,
+          maxPrice: filters?.maxPrice,
           sortBy: sort.sortBy,
           sortOrder: sort.sortOrder,
           limit: 100,
@@ -289,6 +300,12 @@ export const api = {
       }
       if (filters?.inStock) {
         items = items.filter((item) => item.stock > 0);
+      }
+      if (typeof filters?.minPrice === 'number') {
+        items = items.filter((item) => item.price >= filters.minPrice!);
+      }
+      if (typeof filters?.maxPrice === 'number') {
+        items = items.filter((item) => item.price <= filters.maxPrice!);
       }
       return items;
     },
@@ -310,6 +327,8 @@ export const api = {
           brandIds: filters?.brandIds?.length ? filters.brandIds.join(',') : undefined,
           inStock: filters?.inStock || undefined,
           search: filters?.search,
+          minPrice: filters?.minPrice,
+          maxPrice: filters?.maxPrice,
           sortBy: sort.sortBy,
           sortOrder: sort.sortOrder,
         })}`,
@@ -467,8 +486,13 @@ export const api = {
       return items.find((item) => item.slug === slug);
     },
   },
+  payments: {
+    async createCheckoutSession(payload: { orderId: string; successUrl: string; cancelUrl: string }): Promise<{ sessionId: string; checkoutUrl: string }> {
+      return request('/payments/checkout-session', { method: 'POST', body: payload });
+    },
+  },
   orders: {
-    async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number) {
+    async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number, paymentMethod: PaymentMethod): Promise<Order> {
       return request('/orders', {
         method: 'POST',
         body: {
@@ -487,7 +511,10 @@ export const api = {
           },
           items,
           shipping,
-          notes: payload.notes,
+          notes: [
+            `Metoda de plata: ${paymentMethod === 'card' ? 'card online' : 'ramburs la curier'}`,
+            payload.notes,
+          ].filter(Boolean).join('\n'),
         },
       });
     },
@@ -504,6 +531,13 @@ export const api = {
         { token },
       );
       return { ...response, items: response.items.map(normalizeOrder) };
+    },
+    async track(orderNumber: string, contact: string): Promise<Order> {
+      const response = await request<any>('/orders/track', {
+        method: 'POST',
+        body: { orderNumber, contact },
+      });
+      return normalizeOrder(response);
     },
   },
 };

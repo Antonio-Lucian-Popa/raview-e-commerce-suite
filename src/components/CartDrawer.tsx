@@ -2,6 +2,7 @@ import { X, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
+import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
 
 export function CartDrawer() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, subtotal, totalItems } = useCart();
@@ -47,15 +48,19 @@ export function CartDrawer() {
                     <p className="text-xs text-muted-foreground mt-0.5">{item.product.brand?.name}</p>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center gap-1 border rounded">
-                        <button className="p-1 hover:bg-secondary transition-colors" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
+                        <button className="p-1 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
                           <Minus className="h-3 w-3" />
                         </button>
                         <span className="text-sm w-8 text-center">{item.quantity}</span>
-                        <button className="p-1 hover:bg-secondary transition-colors" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
+                        <button
+                          className="p-1 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          disabled={item.quantity >= item.product.stock}
+                        >
                           <Plus className="h-3 w-3" />
                         </button>
                       </div>
-                      <span className="font-semibold text-sm">{item.product.price * item.quantity} lei</span>
+                      <span className="font-semibold text-sm">{formatLei(getProductLineTotalWithVat(item.product, item.quantity))}</span>
                     </div>
                   </div>
                   <button className="self-start text-muted-foreground hover:text-destructive transition-colors" onClick={() => removeItem(item.product.id)}>
@@ -68,8 +73,9 @@ export function CartDrawer() {
             <div className="p-4 border-t space-y-3">
               <div className="flex items-center justify-between font-semibold">
                 <span>Subtotal</span>
-                <span>{subtotal} lei</span>
+                <span>{formatLei(subtotal)}</span>
               </div>
+              <p className="text-xs text-muted-foreground">Prețurile includ TVA 21%.</p>
               <p className="text-xs text-muted-foreground">Livrarea se calculează la checkout.</p>
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="outline" asChild onClick={() => setIsOpen(false)}>

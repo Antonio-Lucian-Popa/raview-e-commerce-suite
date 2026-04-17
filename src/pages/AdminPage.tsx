@@ -10,6 +10,7 @@ import {
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
+  Eye,
   LayoutGrid,
   Loader2,
   LogOut,
@@ -282,6 +283,15 @@ function getOrderCustomer(order: Order) {
   );
 }
 
+function getOrderAddress(order: Order) {
+  return order.addressSnapshot;
+}
+
+function formatMoney(value?: number | string | null) {
+  const amount = Number(value ?? 0);
+  return `${amount.toFixed(Number.isInteger(amount) ? 0 : 2)} lei`;
+}
+
 /* ───────── small reusable pieces ───────── */
 
 function StatusPill({ children, variant = 'secondary' }: { children: ReactNode; variant?: 'default' | 'secondary' | 'destructive' }) {
@@ -395,6 +405,7 @@ export default function AdminPage() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [productSearch, setProductSearch] = useState('');
@@ -495,6 +506,10 @@ export default function AdminPage() {
   const brandOptions = brandsLookup?.items ?? brands;
   const promotionProducts = productsLookup?.items ?? products;
   const productsTotalPages = Math.max(1, productsData?.meta.totalPages ?? 1);
+  const unreadNotifications = useMemo(
+    () => notifications.filter((notification) => !notification.read),
+    [notifications],
+  );
 
   const openNewProduct = () => {
     setProductForm(emptyProductForm);
@@ -593,7 +608,7 @@ export default function AdminPage() {
 
     const pushNotification = (notification: AdminNotification) => {
       setNotifications((current) => {
-        const next = [notification, ...current.filter((entry) => entry.id !== notification.id)];
+        const next = [{ ...notification, read: false }, ...current.filter((entry) => entry.id !== notification.id)];
         return next.slice(0, 20);
       });
 
@@ -900,7 +915,31 @@ export default function AdminPage() {
     setBrandLogoPreview(URL.createObjectURL(file));
   };
 
+  const markNotificationsAsSeen = async (ids?: string[]) => {
+    const idsToMark = ids ?? notifications.map((notification) => notification.id);
+    if (!token || idsToMark.length === 0) return;
+
+    setNotifications((current) =>
+      current.map((notification) =>
+        idsToMark.includes(notification.id) ? { ...notification, read: true } : notification,
+      ),
+    );
+
+    try {
+      const nextNotifications = await api.notifications.markAsRead(token, idsToMark);
+      setNotifications(nextNotifications);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Nu am putut marca notificările ca văzute.');
+    }
+  };
+
+  const openNotificationsPanel = () => {
+    setNotificationsOpen(true);
+    void markNotificationsAsSeen(unreadNotifications.map((notification) => notification.id));
+  };
+
   const openNotificationTarget = (notification: AdminNotification) => {
+    void markNotificationsAsSeen([notification.id]);
     setNotificationsOpen(false);
     setActiveTab(notification.section);
   };
@@ -922,13 +961,13 @@ export default function AdminPage() {
               variant="outline"
               size="icon"
               className="relative shrink-0"
-              onClick={() => setNotificationsOpen(true)}
+              onClick={openNotificationsPanel}
               aria-label="Notificări"
             >
               <Bell className="h-4 w-4" />
-              {notifications.length > 0 && (
+              {unreadNotifications.length > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
-                  {Math.min(notifications.length, 9)}
+                  {Math.min(unreadNotifications.length, 9)}
                 </span>
               )}
             </Button>
@@ -969,11 +1008,11 @@ export default function AdminPage() {
           <p className="text-xs text-muted-foreground truncate">{currentUser?.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative text-muted-foreground" onClick={() => setNotificationsOpen(true)} aria-label="Notificări">
+          <Button variant="ghost" size="icon" className="relative text-muted-foreground" onClick={openNotificationsPanel} aria-label="Notificări">
             <Bell className="h-4 w-4" />
-            {notifications.length > 0 && (
+            {unreadNotifications.length > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-foreground">
-                {Math.min(notifications.length, 9)}
+                {Math.min(unreadNotifications.length, 9)}
               </span>
             )}
           </Button>
@@ -1222,6 +1261,10 @@ export default function AdminPage() {
                     <div className="text-right shrink-0">
                       <p className="font-semibold text-sm">{order.total} lei</p>
                       <p className="text-xs text-muted-foreground">{formatDate(order.createdAt)}</p>
+                      <Button variant="outline" size="sm" className="mt-2 gap-1.5" onClick={() => setSelectedOrder(order)}>
+                        <Eye className="h-3.5 w-3.5" />
+                        Detalii
+                      </Button>
                     </div>
                   </article>
                 );
@@ -1239,11 +1282,121 @@ export default function AdminPage() {
           </Card>
         )}
 
+        <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+          <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+            {selectedOrder && (
+              <>
+                <DialogHeader>
+                  <DialogTitle>Comanda #{selectedOrder.id.slice(-8).toUpperCase()}</DialogTitle>
+                  <DialogDescription>
+                    Detalii despre client, adresă, plată și produsele comandate.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Client</p>
+                    {(() => {
+                      const customer = getOrderCustomer(selectedOrder);
+                      return (
+                        <div className="mt-3 space-y-1 text-sm">
+                          <p className="font-medium">{customer.firstName} {customer.lastName}</p>
+                          <p className="text-muted-foreground">{customer.email || 'Email indisponibil'}</p>
+                          <p className="text-muted-foreground">{customer.phone || 'Telefon indisponibil'}</p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Adresă</p>
+                    {(() => {
+                      const address = getOrderAddress(selectedOrder);
+                      return address ? (
+                        <div className="mt-3 space-y-1 text-sm">
+                          <p className="font-medium">{address.line1}</p>
+                          {address.line2 && <p className="text-muted-foreground">{address.line2}</p>}
+                          <p className="text-muted-foreground">
+                            {[address.city, address.state, address.postalCode].filter(Boolean).join(', ')}
+                          </p>
+                          <p className="text-muted-foreground">{address.country}</p>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-muted-foreground">Adresă indisponibilă.</p>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Comandă</p>
+                    <div className="mt-3 space-y-1 text-sm">
+                      <p><span className="text-muted-foreground">Status:</span> {formatOrderStatus(selectedOrder.status)}</p>
+                      <p><span className="text-muted-foreground">Plată:</span> {formatPaymentStatus(selectedOrder.paymentStatus)}</p>
+                      <p><span className="text-muted-foreground">Dată:</span> {formatDateTime(selectedOrder.createdAt)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border/70">
+                  <div className="border-b border-border/70 px-4 py-3">
+                    <p className="font-semibold">Produse comandate</p>
+                  </div>
+                  <div className="divide-y divide-border/70">
+                    {(selectedOrder.items ?? []).map((item) => (
+                      <div key={item.id} className="grid gap-3 px-4 py-3 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-xs text-muted-foreground">Cod produs: {item.sku}</p>
+                        </div>
+                        <p className="text-muted-foreground">Cantitate: {item.quantity}</p>
+                        <p className="font-semibold">{formatMoney(item.totalPrice)}</p>
+                      </div>
+                    ))}
+                    {(selectedOrder.items ?? []).length === 0 && (
+                      <div className="px-4 py-6 text-sm text-muted-foreground">Nu există produse atașate acestei comenzi.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                  <div className="rounded-xl border border-border/70 bg-secondary/20 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Observații</p>
+                    <p className="mt-3 text-sm text-muted-foreground">{selectedOrder.notes || 'Nu există observații pentru această comandă.'}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Total</p>
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Produse</span><span>{formatMoney(selectedOrder.subtotal)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Reducere</span><span>{formatMoney(selectedOrder.discount)}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{formatMoney(selectedOrder.shipping)}</span></div>
+                      <div className="flex justify-between border-t border-border/70 pt-3 font-semibold"><span>Total</span><span>{formatMoney(selectedOrder.total)}</span></div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
           <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Notificări</DialogTitle>
-              <DialogDescription>Vezi rapid ce s-a întâmplat recent în magazin.</DialogDescription>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <DialogTitle>Notificări</DialogTitle>
+                  <DialogDescription>Vezi rapid ce s-a întâmplat recent în magazin.</DialogDescription>
+                </div>
+                {notifications.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void markNotificationsAsSeen(notifications.map((notification) => notification.id))}
+                  >
+                    Marchează tot ca văzut
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             <div className="space-y-3">
               {notifications.map((notification) => (
@@ -1251,11 +1404,16 @@ export default function AdminPage() {
                   key={notification.id}
                   type="button"
                   onClick={() => openNotificationTarget(notification)}
-                  className="w-full rounded-xl border border-border/70 bg-secondary/20 p-4 text-left transition-colors hover:bg-secondary/35"
+                  className={`w-full rounded-xl border p-4 text-left transition-colors hover:bg-secondary/35 ${
+                    notification.read ? 'border-border/70 bg-secondary/20' : 'border-accent/50 bg-accent/10'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium">{notification.title}</p>
+                      <p className="font-medium">
+                        {!notification.read && <span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" />}
+                        {notification.title}
+                      </p>
                       <p className="mt-1 text-sm text-muted-foreground">{notification.message}</p>
                     </div>
                     <StatusPill>{notification.section === 'orders' ? 'Comenzi' : 'Produse'}</StatusPill>

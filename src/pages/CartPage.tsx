@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useCart } from '@/hooks/useCart';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, subtotal } = useCart();
@@ -42,15 +43,19 @@ export default function CartPage() {
                 <p className="text-xs text-muted-foreground">{item.product.brand?.name} · {item.product.sku}</p>
                 <div className="flex items-center justify-between mt-3">
                   <div className="flex items-center border rounded-md">
-                    <button className="p-2 hover:bg-secondary" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
+                    <button className="p-2 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}>
                       <Minus className="h-3 w-3" />
                     </button>
                     <span className="w-10 text-center text-sm">{item.quantity}</span>
-                    <button className="p-2 hover:bg-secondary" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}>
+                    <button
+                      className="p-2 hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                      disabled={item.quantity >= item.product.stock}
+                    >
                       <Plus className="h-3 w-3" />
                     </button>
                   </div>
-                  <span className="font-semibold">{item.product.price * item.quantity} lei</span>
+                  <span className="font-semibold">{formatLei(getProductLineTotalWithVat(item.product, item.quantity))}</span>
                 </div>
               </div>
               <button onClick={() => removeItem(item.product.id)} className="text-muted-foreground hover:text-destructive self-start">
@@ -65,16 +70,17 @@ export default function CartPage() {
           <div className="border rounded-lg p-6 space-y-4">
             <h3 className="font-display font-semibold text-lg">Sumar Comandă</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{subtotal} lei</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : `${shipping} lei`}</span></div>
-              {shipping > 0 && <p className="text-xs text-accent">Mai adaugă {500 - subtotal} lei pentru livrare gratuită!</p>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal cu TVA</span><span>{formatLei(subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : formatLei(shipping)}</span></div>
+              {shipping > 0 && <p className="text-xs text-accent">Mai adaugă {formatLei(500 - subtotal)} pentru livrare gratuită!</p>}
+              <p className="text-xs text-muted-foreground">Prețurile includ TVA 21%.</p>
             </div>
             <div className="flex gap-2">
               <Input placeholder="Cod cupon" value={coupon} onChange={e => setCoupon(e.target.value)} />
               <Button variant="outline" onClick={() => toast.info('Funcționalitate cupon în dezvoltare.')}>Aplică</Button>
             </div>
             <div className="flex justify-between font-bold text-lg border-t pt-4">
-              <span>Total</span><span>{total} lei</span>
+              <span>Total</span><span>{formatLei(total)}</span>
             </div>
             <Button className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" asChild>
               <Link to="/checkout">Continuă spre Checkout <ArrowRight className="ml-2 h-4 w-4" /></Link>

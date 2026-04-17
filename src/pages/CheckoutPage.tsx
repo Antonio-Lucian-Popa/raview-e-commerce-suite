@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/hooks/useCart';
-import { CreditCard, Lock } from 'lucide-react';
+import { CreditCard, Lock, Truck } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
 
 const schema = z.object({
   firstName: z.string().min(2, 'Prenumele este obligatoriu'),
@@ -24,6 +25,7 @@ const schema = z.object({
   county: z.string().min(2, 'Județul este obligatoriu'),
   postalCode: z.string().min(4, 'Cod poștal invalid'),
   notes: z.string().optional(),
+  paymentMethod: z.enum(['card', 'cash_on_delivery']),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -35,20 +37,40 @@ export default function CheckoutPage() {
   const shipping = subtotal >= 500 ? 0 : 25;
   const total = subtotal + shipping;
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: { paymentMethod: 'card' },
   });
+  const paymentMethod = watch('paymentMethod');
 
   const onSubmit = async (data: FormData) => {
     setProcessing(true);
     try {
-      await api.orders.create(
+      const order = await api.orders.create(
         data as import('@/types').CheckoutFormData,
         items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
         shipping,
+        data.paymentMethod,
       );
+
+      if (data.paymentMethod === 'card') {
+        const checkoutSession = await api.payments.createCheckoutSession({
+          orderId: order.id,
+          successUrl: `${window.location.origin}/order-success?orderId=${order.id}`,
+          cancelUrl: `${window.location.origin}/checkout?payment=cancelled`,
+        });
+
+        if (!checkoutSession.checkoutUrl) {
+          throw new Error('Stripe nu a returnat URL-ul de checkout.');
+        }
+
+        clearCart();
+        window.location.assign(checkoutSession.checkoutUrl);
+        return;
+      }
+
       clearCart();
-      navigate('/order-success');
+      navigate(`/order-success?orderId=${order.id}`);
     } finally {
       setProcessing(false);
     }
@@ -122,16 +144,31 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Payment placeholder */}
           <div className="border rounded-lg p-6 space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" /> Metodă de Plată</h3>
-            <div className="bg-secondary rounded-lg p-4 flex items-center gap-3">
-              <Lock className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Plată securizată prin Stripe</p>
-                <p className="text-xs text-muted-foreground">Integrarea Stripe va fi configurată de echipa de backend.</p>
-              </div>
-            </div>
+            <RadioGroup
+              value={paymentMethod}
+              onValueChange={(value) => setValue('paymentMethod', value as FormData['paymentMethod'], { shouldValidate: true })}
+              className="grid gap-3"
+            >
+              <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:border-accent/60">
+                <RadioGroupItem value="card" className="mt-1" />
+                <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
+                <span>
+                  <span className="block text-sm font-medium">Card online</span>
+                  <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Plată securizată prin Stripe.</span>
+                </span>
+              </Label>
+              <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:border-accent/60">
+                <RadioGroupItem value="cash_on_delivery" className="mt-1" />
+                <Truck className="mt-0.5 h-5 w-5 text-accent" />
+                <span>
+                  <span className="block text-sm font-medium">Ramburs la curier</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">Plătești numerar sau cu cardul la livrare, în funcție de curier.</span>
+                </span>
+              </Label>
+            </RadioGroup>
+            {errors.paymentMethod && <p className="text-xs text-destructive">Alege metoda de plată.</p>}
           </div>
         </div>
 
@@ -147,17 +184,18 @@ export default function CheckoutPage() {
                     <p className="text-sm line-clamp-1">{item.product.name}</p>
                     <p className="text-xs text-muted-foreground">x{item.quantity}</p>
                   </div>
-                  <span className="text-sm font-medium">{item.product.price * item.quantity} lei</span>
+                  <span className="text-sm font-medium">{formatLei(getProductLineTotalWithVat(item.product, item.quantity))}</span>
                 </div>
               ))}
             </div>
             <div className="border-t pt-3 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{subtotal} lei</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : `${shipping} lei`}</span></div>
-              <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{total} lei</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Subtotal cu TVA</span><span>{formatLei(subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : formatLei(shipping)}</span></div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{formatLei(total)}</span></div>
+              <p className="text-xs text-muted-foreground">Prețurile includ TVA 21%.</p>
             </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" disabled={processing}>
-              {processing ? 'Se procesează...' : `Plasează Comanda · ${total} lei`}
+              {processing ? 'Se procesează...' : paymentMethod === 'card' ? `Plătește online · ${formatLei(total)}` : `Plasează comanda · ${formatLei(total)}`}
             </Button>
             <p className="text-xs text-center text-muted-foreground">Datele tale sunt protejate și securizate.</p>
           </div>

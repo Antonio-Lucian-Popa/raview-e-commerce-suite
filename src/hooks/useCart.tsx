@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { CartItem, Product } from '@/types';
 import { toast } from 'sonner';
+import { getProductLineTotalWithVat } from '@/lib/pricing';
 
 interface CartContextType {
   items: CartItem[];
@@ -21,13 +22,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
+    if (product.stock <= 0) {
+      toast.error(`${product.name} nu este disponibil momentan.`);
+      return;
+    }
+
+    const requestedQuantity = Math.max(1, quantity);
+    let addedQuantity = 0;
+
     setItems(prev => {
       const existing = prev.find(i => i.product.id === product.id);
       if (existing) {
-        return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + quantity } : i);
+        const nextQuantity = Math.min(product.stock, existing.quantity + requestedQuantity);
+        addedQuantity = nextQuantity - existing.quantity;
+        return prev.map(i => i.product.id === product.id ? { ...i, quantity: nextQuantity } : i);
       }
-      return [...prev, { product, quantity }];
+      addedQuantity = Math.min(product.stock, requestedQuantity);
+      return [...prev, { product, quantity: addedQuantity }];
     });
+
+    if (addedQuantity <= 0) {
+      toast.error(`Ai deja cantitatea maximă disponibilă pentru ${product.name}.`);
+      setIsOpen(true);
+      return;
+    }
+
     setIsOpen(true);
     toast.success(`${product.name} a fost adăugat în coș`);
   }, []);
@@ -41,13 +60,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems(prev => prev.filter(i => i.product.id !== productId));
       return;
     }
-    setItems(prev => prev.map(i => i.product.id === productId ? { ...i, quantity } : i));
+    setItems(prev =>
+      prev.map(i =>
+        i.product.id === productId
+          ? { ...i, quantity: Math.min(quantity, Math.max(1, i.product.stock)) }
+          : i,
+      ),
+    );
   }, []);
 
   const clearCart = useCallback(() => setItems([]), []);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = items.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
+  const subtotal = items.reduce((sum, i) => sum + getProductLineTotalWithVat(i.product, i.quantity), 0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, subtotal, isOpen, setIsOpen }}>

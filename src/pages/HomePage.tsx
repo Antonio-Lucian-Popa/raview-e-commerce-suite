@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
-import { withAssetVersion } from '@/lib/assets';
+import { getCategoryIcon } from '@/lib/category-icons';
 import heroImage from '@/assets/hero-showroom.jpg';
 
 const benefits = [
@@ -91,20 +91,21 @@ export default function HomePage() {
             <p className="text-muted-foreground">Găsește soluția perfectă de iluminat pentru orice spațiu și nevoie.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categories.map(cat => (
-              <Link
-                key={cat.id}
-                to={`/category/${cat.slug}`}
-                className="group relative aspect-[4/3] rounded-lg overflow-hidden hover-lift"
-              >
-                <img src={withAssetVersion(cat.image, cat.updatedAt ?? cat.createdAt)} alt={cat.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <h3 className="font-semibold text-background text-sm md:text-base">{cat.name}</h3>
-                  <p className="text-xs text-background/60 mt-0.5">{cat.productCount ?? 0} produse</p>
-                </div>
-              </Link>
-            ))}
+            {categories.map(cat => {
+              const Icon = getCategoryIcon(cat);
+
+              return (
+                <Link
+                  key={cat.id}
+                  to={`/category/${cat.slug}`}
+                  className="group flex min-h-40 flex-col items-center justify-center rounded-lg border border-border/80 bg-background p-5 text-center hover-lift hover:border-accent/70 hover:bg-accent/5"
+                >
+                  <Icon className="mb-4 h-10 w-10 stroke-[1.35] text-foreground/75 transition-colors group-hover:text-accent" />
+                  <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-tight md:text-base">{cat.name}</h3>
+                  <p className="mt-2 text-xs text-muted-foreground">{cat.productCount ?? 0} produse</p>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

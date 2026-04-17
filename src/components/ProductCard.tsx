@@ -4,6 +4,7 @@ import { Product } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useCart } from '@/hooks/useCart';
+import { formatLei, getProductOldPriceWithVat, getProductPriceWithVat, getVatLabel } from '@/lib/pricing';
 
 interface ProductCardProps {
   product: Product;
@@ -35,6 +36,8 @@ export function ProductCard({ product }: ProductCardProps) {
   const averageRating = reviewCount
     ? product.reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
     : 0;
+  const priceWithVat = getProductPriceWithVat(product);
+  const oldPriceWithVat = getProductOldPriceWithVat(product);
 
   return (
     <div className="group hover-lift bg-card rounded-lg border overflow-hidden">
@@ -75,11 +78,14 @@ export function ProductCard({ product }: ProductCardProps) {
           <span className="text-xs text-muted-foreground ml-1">({reviewCount})</span>
         </div>
         <div className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-lg">{product.price} lei</span>
-            {product.oldPrice && (
-              <span className="text-sm text-muted-foreground line-through">{product.oldPrice} lei</span>
-            )}
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-lg">{formatLei(priceWithVat)}</span>
+              {oldPriceWithVat && (
+                <span className="text-sm text-muted-foreground line-through">{formatLei(oldPriceWithVat)}</span>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">{getVatLabel()}</p>
           </div>
           <Button
             size="icon"
