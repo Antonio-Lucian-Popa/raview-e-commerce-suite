@@ -144,7 +144,7 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="ml-auto flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
             {searchOpen ? (
               <div className="hidden items-center gap-2 sm:flex">
                 <input
@@ -180,7 +180,7 @@ export function Header() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 gap-2 rounded-full border-accent/40 bg-accent/10 px-3 text-accent hover:bg-accent hover:text-accent-foreground lg:hidden"
+              className="h-9 gap-1.5 rounded-full border-accent/40 bg-accent/10 px-2.5 text-accent hover:bg-accent hover:text-accent-foreground sm:gap-2 sm:px-3 lg:hidden"
               onClick={() => setMobileOpen(true)}
             >
               <Menu className="h-4 w-4" />

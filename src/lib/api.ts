@@ -334,9 +334,11 @@ export const api = {
         })}`,
       );
 
+      const items = response.items.map(normalizeProduct);
+
       return {
         ...response,
-        items: response.items.map(normalizeProduct),
+        items: filters?.inStock ? items.filter((item) => item.stock > 0) : items,
       };
     },
     async getBySlug(slug: string): Promise<Product> {

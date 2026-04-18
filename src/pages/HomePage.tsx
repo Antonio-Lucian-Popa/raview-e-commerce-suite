@@ -16,19 +16,24 @@ const benefits = [
 ];
 
 export default function HomePage() {
-  const { data: featured, isLoading } = useQuery({
-    queryKey: ['products', 'featured'],
-    queryFn: () => api.products.getFeatured(),
+  const { data: inStockProductsData, isLoading } = useQuery({
+    queryKey: ['products', 'home-in-stock'],
+    queryFn: () => api.products.getCatalogPage({ page: 1, limit: 4, inStock: true }),
   });
   const { data: categories = [] } = useQuery({
     queryKey: ['categories', 'home'],
     queryFn: () => api.categories.getAll(),
+  });
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands', 'home'],
+    queryFn: () => api.brands.getAll(),
   });
   const { data: promotions = [] } = useQuery({
     queryKey: ['promotions', 'home'],
     queryFn: () => api.promotions.getAll(),
   });
   const topPromotion = promotions[0];
+  const inStockProducts = inStockProductsData?.items ?? [];
 
   return (
     <>
@@ -110,21 +115,62 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Products */}
+      {/* In Stock Products */}
       <section className="section-padding bg-surface">
         <div className="container-page">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-3xl font-display font-bold">Produse Populare</h2>
-              <p className="text-muted-foreground mt-1">Cele mai apreciate corpuri de iluminat.</p>
+              <h2 className="text-3xl font-display font-bold">Produse în stoc</h2>
+              <p className="text-muted-foreground mt-1">Corpuri de iluminat disponibile acum.</p>
             </div>
             <Button variant="outline" asChild>
-              <Link to="/shop">Vezi toate <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link to="/shop?inStock=true">Vezi toate <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
-          {isLoading ? <ProductGridSkeleton /> : featured && <ProductGrid products={featured} />}
+          {isLoading ? <ProductGridSkeleton /> : <ProductGrid products={inStockProducts} />}
         </div>
       </section>
+
+      {/* Suppliers */}
+      {brands.length > 0 && (
+        <section className="border-b border-border/80 bg-background">
+          <div className="container-page py-12 md:py-16">
+            <div className="mb-7 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-[0.26em] text-accent">Furnizori</span>
+                <h2 className="mt-3 text-3xl font-display font-bold md:text-4xl">Alege brandul preferat</h2>
+              </div>
+              <Button variant="outline" className="w-fit" asChild>
+                <Link to="/shop">Toți furnizorii <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              {brands.map((brand) => (
+                <Link
+                  key={brand.id}
+                  to={`/shop?brandIds=${encodeURIComponent(brand.id)}`}
+                  className="group flex min-h-24 items-center justify-center rounded-lg border border-border/80 bg-card px-5 py-6 transition-all hover:-translate-y-0.5 hover:border-accent/60 hover:shadow-sm"
+                  aria-label={`Vezi produse ${brand.name}`}
+                >
+                  {brand.logo ? (
+                    <img
+                      src={brand.logo}
+                      alt={brand.name}
+                      loading="lazy"
+                      className="max-h-12 max-w-full object-contain opacity-75 grayscale transition-all group-hover:opacity-100 group-hover:grayscale-0"
+                    />
+                  ) : (
+                    <span className="text-center font-display text-lg font-semibold leading-none tracking-tight text-foreground/70 transition-colors group-hover:text-accent">
+                      {brand.name}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Promo Banner */}
       {topPromotion && (

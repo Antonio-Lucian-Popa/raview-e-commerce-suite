@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw, Check } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw, Check, ZoomIn } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ProductGrid } from '@/components/ProductGrid';
 import { PageSkeleton } from '@/components/LoadingSkeletons';
 import { ErrorState } from '@/components/EmptyError';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
@@ -29,6 +30,7 @@ const hiddenSpecKeys = new Set([
   'importedFrom',
   'importRow',
 ]);
+const BACKORDER_MAX_QUANTITY = 99;
 
 const specLabels: Record<string, string> = {
   productCode: 'Cod produs',
@@ -71,7 +73,7 @@ function getDisplaySpecs(product: Product) {
     { label: 'Cod produs', value: product.specs?.productCode ?? product.sku },
     { label: 'Brand', value: product.brand?.name },
     { label: 'Categorie', value: product.category?.name },
-    { label: 'Disponibilitate', value: product.stock > 0 ? `În stoc (${product.stock} buc.)` : 'Stoc epuizat' },
+    { label: 'Disponibilitate', value: product.stock > 0 ? `În stoc (${product.stock} buc.)` : 'La comandă' },
   ];
 
   const extraSpecs = Object.entries(product.specs ?? {})
@@ -90,6 +92,7 @@ export default function ProductPage() {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['product', slug],
@@ -107,15 +110,19 @@ export default function ProductPage() {
   if (error || !product) return <ErrorState message="Produsul nu a fost găsit." />;
 
   const displaySpecs = getDisplaySpecs(product);
-  const canIncreaseQuantity = product.stock > 0 && quantity < product.stock;
+  const maxOrderQuantity = product.stock > 0 ? product.stock : BACKORDER_MAX_QUANTITY;
+  const canIncreaseQuantity = quantity < maxOrderQuantity;
   const canDecreaseQuantity = quantity > 1;
   const priceWithoutVat = getProductPriceWithoutVat(product);
   const priceWithVat = getProductPriceWithVat(product);
   const oldPriceWithVat = getProductOldPriceWithVat(product);
   const lineTotalWithVat = getProductLineTotalWithVat(product, quantity);
+  const selectedProductImage = product.images[selectedImage];
+  const selectedImageUrl = selectedProductImage?.url ?? '/placeholder.svg';
+  const selectedImageAlt = selectedProductImage?.alt ?? product.name;
 
   return (
-    <div className="container-page pb-16">
+    <div className="container-page overflow-x-hidden pb-28 lg:pb-16">
       <Breadcrumbs items={[
         { label: 'Magazin', href: '/shop' },
         { label: product.category?.name ?? 'Categorie', href: `/category/${product.category?.slug}` },
@@ -135,39 +142,60 @@ export default function ProductPage() {
           "@type": "Offer",
           price: Number(priceWithVat.toFixed(2)),
           priceCurrency: "RON",
-          availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+          availability: product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/BackOrder",
         },
       })}} />
 
-      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 mb-16">
+      <div className="mb-16 grid min-w-0 gap-8 lg:grid-cols-2 lg:gap-12">
         {/* Gallery */}
-        <div className="space-y-3">
-          <div className="aspect-square rounded-lg overflow-hidden bg-secondary">
-            <img src={product.images[selectedImage]?.url ?? '/placeholder.svg'} alt={product.name} className="w-full h-full object-cover" />
-          </div>
+        <div className="min-w-0 space-y-3">
+          <button
+            type="button"
+            onClick={() => setImagePreviewOpen(true)}
+            className="group relative block aspect-square w-full overflow-hidden rounded-lg bg-secondary text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            aria-label="Mărește imaginea produsului"
+          >
+            <img src={selectedImageUrl} alt={selectedImageAlt} className="h-full w-full object-contain" />
+            <span className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-md bg-background/90 px-3 py-2 text-xs font-medium text-foreground shadow-sm opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              <ZoomIn className="h-4 w-4" />
+              Mărește
+            </span>
+          </button>
           {product.images.length > 1 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1">
               {product.images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setSelectedImage(i)}
-                  className={`w-20 h-20 rounded-md overflow-hidden border-2 transition-colors ${i === selectedImage ? 'border-accent' : 'border-transparent hover:border-border'}`}
+                  className={`h-20 w-20 shrink-0 overflow-hidden rounded-md border-2 transition-colors ${i === selectedImage ? 'border-accent' : 'border-transparent hover:border-border'}`}
                 >
-                  <img src={img.url} alt={img.alt ?? ''} className="w-full h-full object-cover" />
+                  <img src={img.url} alt={img.alt ?? ''} className="h-full w-full object-contain" />
                 </button>
               ))}
             </div>
           )}
+          <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+            <DialogContent className="max-h-[96vh] w-[96vw] max-w-6xl border-0 bg-background p-3 shadow-xl sm:p-4">
+              <DialogTitle className="sr-only">{product.name}</DialogTitle>
+              <div className="flex max-h-[calc(96vh-2rem)] items-center justify-center overflow-hidden rounded-md bg-secondary">
+                <img
+                  src={selectedImageUrl}
+                  alt={selectedImageAlt}
+                  className="max-h-[calc(96vh-2rem)] w-auto max-w-full object-contain"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Info */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">{product.brand?.name}</span>
-              <span className="text-xs text-muted-foreground">SKU: {product.sku}</span>
+            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-sm uppercase tracking-wider text-muted-foreground">{product.brand?.name}</span>
+              <span className="min-w-0 truncate text-xs text-muted-foreground">SKU: {product.sku}</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold">{product.name}</h1>
+            <h1 className="break-words text-2xl font-display font-bold md:text-3xl">{product.name}</h1>
             {(product.isNew || product.bestseller || (product.oldPrice && product.oldPrice > product.price)) && (
               <div className="flex gap-2 mt-3">
                 {product.isNew && <Badge>Nou</Badge>}
@@ -177,7 +205,7 @@ export default function ProductPage() {
             )}
           </div>
 
-          <div className="flex items-baseline gap-3">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-3">
             <span className="text-3xl font-bold">{formatLei(priceWithVat)}</span>
             {oldPriceWithVat && (
               <>
@@ -186,14 +214,14 @@ export default function ProductPage() {
               </>
             )}
           </div>
-          <div className="rounded-lg border border-border/70 bg-secondary/30 px-4 py-3 text-sm">
-            <div className="flex justify-between gap-4">
+          <div className="rounded-lg border border-border/70 bg-secondary/30 px-3 py-3 text-sm sm:px-4">
+            <div className="flex min-w-0 justify-between gap-4">
               <span className="text-muted-foreground">Preț fără TVA</span>
-              <span className="font-medium">{formatLei(priceWithoutVat)}</span>
+              <span className="shrink-0 font-medium">{formatLei(priceWithoutVat)}</span>
             </div>
-            <div className="mt-1 flex justify-between gap-4 font-semibold">
+            <div className="mt-1 flex min-w-0 justify-between gap-4 font-semibold">
               <span>Total cu TVA 21%</span>
-              <span>{formatLei(priceWithVat)}</span>
+              <span className="shrink-0">{formatLei(priceWithVat)}</span>
             </div>
           </div>
 
@@ -203,29 +231,29 @@ export default function ProductPage() {
             {product.stock > 0 ? (
               <span className="flex items-center gap-1 text-sm text-green-600 font-medium"><Check className="h-4 w-4" /> În stoc ({product.stock} buc.)</span>
             ) : (
-              <span className="text-sm text-destructive font-medium">Stoc epuizat</span>
+              <span className="text-sm text-amber-700 font-medium">Disponibil la comandă</span>
             )}
           </div>
 
           <div className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-foreground">
-            Termen de livrare: 2-3 săptămâni
+            Termen de livrare: {product.stock > 0 ? '2-3 zile' : '2-3 săptămâni'}
           </div>
 
           {/* Quantity + Add to cart */}
-          <div className="flex items-center gap-4 pt-2">
-            <div className="flex items-center border rounded-md">
+          <div className="grid min-w-0 grid-cols-[7.25rem_minmax(0,1fr)] items-center gap-3 pt-2 sm:flex sm:gap-4">
+            <div className="flex h-11 items-center rounded-md border">
               <button
-                className="p-3 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={!canDecreaseQuantity}
                 aria-label="Scade cantitatea"
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-12 text-center font-medium">{quantity}</span>
+              <span className="w-10 text-center font-medium">{quantity}</span>
               <button
-                className="p-3 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => setQuantity(Math.min(maxOrderQuantity, quantity + 1))}
                 disabled={!canIncreaseQuantity}
                 aria-label="Crește cantitatea"
               >
@@ -234,11 +262,12 @@ export default function ProductPage() {
             </div>
             <Button
               size="lg"
-              className="flex-1 bg-accent text-accent-foreground hover:bg-gold-dark"
-              disabled={product.stock <= 0}
+              className="min-w-0 flex-1 bg-accent px-3 text-sm text-accent-foreground hover:bg-gold-dark sm:px-8"
               onClick={() => addItem(product, quantity)}
             >
-              <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș · {formatLei(lineTotalWithVat)}
+              <ShoppingBag className="mr-2 h-4 w-4" />
+              <span className="truncate">Adaugă în coș</span>
+              <span className="hidden sm:inline"> · {formatLei(lineTotalWithVat)}</span>
             </Button>
           </div>
 
@@ -259,8 +288,8 @@ export default function ProductPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="description" className="mb-16">
-        <TabsList>
+      <Tabs defaultValue="description" className="mb-16 min-w-0">
+        <TabsList className="max-w-full justify-start overflow-x-auto">
           <TabsTrigger value="description">Descriere</TabsTrigger>
           <TabsTrigger value="specs">Specificații</TabsTrigger>
           <TabsTrigger value="delivery">Livrare & Plată</TabsTrigger>
@@ -294,18 +323,18 @@ export default function ProductPage() {
       )}
 
       {/* Mobile sticky CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 flex items-center gap-3 lg:hidden z-40">
-        <div>
-          <span className="font-bold">{formatLei(priceWithVat)}</span>
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex min-w-0 items-center gap-2 border-t bg-background px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden">
+        <div className="min-w-0 shrink-0">
+          <span className="block truncate font-bold leading-tight">{formatLei(priceWithVat)}</span>
           {oldPriceWithVat && <span className="text-xs text-muted-foreground line-through ml-1">{formatLei(oldPriceWithVat)}</span>}
-          <p className="text-[11px] text-muted-foreground">{getVatLabel()}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{getVatLabel()}</p>
         </div>
         <Button
-          className="flex-1 bg-accent text-accent-foreground hover:bg-gold-dark"
-          disabled={product.stock <= 0}
+          className="min-w-0 flex-1 bg-accent px-3 text-accent-foreground hover:bg-gold-dark"
           onClick={() => addItem(product, quantity)}
         >
-          <ShoppingBag className="h-4 w-4 mr-2" /> Adaugă în coș
+          <ShoppingBag className="mr-2 h-4 w-4" />
+          <span className="truncate">Adaugă în coș</span>
         </Button>
       </div>
     </div>

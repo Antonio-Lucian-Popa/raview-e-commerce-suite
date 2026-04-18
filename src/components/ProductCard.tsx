@@ -46,7 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
           src={imageUrl}
           alt={product.name}
           loading="lazy"
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
         />
         {badges.length > 0 && (
           <div className="absolute top-3 left-3 flex flex-col gap-1">
@@ -92,12 +92,11 @@ export function ProductCard({ product }: ProductCardProps) {
             variant="outline"
             className="h-8 w-8 shrink-0 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-colors"
             onClick={(e) => { e.preventDefault(); addItem(product); }}
-            disabled={product.stock <= 0}
           >
             <ShoppingBag className="h-4 w-4" />
           </Button>
         </div>
-        {product.stock <= 0 && <p className="text-xs text-destructive font-medium">Stoc epuizat</p>}
+        {product.stock <= 0 && <p className="text-xs font-medium text-amber-700">Disponibil la comandă</p>}
       </div>
     </div>
   );

@@ -16,28 +16,26 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+const BACKORDER_MAX_QUANTITY = 99;
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
-    if (product.stock <= 0) {
-      toast.error(`${product.name} nu este disponibil momentan.`);
-      return;
-    }
-
     const requestedQuantity = Math.max(1, quantity);
     let addedQuantity = 0;
 
     setItems(prev => {
       const existing = prev.find(i => i.product.id === product.id);
       if (existing) {
-        const nextQuantity = Math.min(product.stock, existing.quantity + requestedQuantity);
+        const nextQuantity = product.stock > 0
+          ? Math.min(product.stock, existing.quantity + requestedQuantity)
+          : Math.min(BACKORDER_MAX_QUANTITY, existing.quantity + requestedQuantity);
         addedQuantity = nextQuantity - existing.quantity;
         return prev.map(i => i.product.id === product.id ? { ...i, quantity: nextQuantity } : i);
       }
-      addedQuantity = Math.min(product.stock, requestedQuantity);
+      addedQuantity = product.stock > 0 ? Math.min(product.stock, requestedQuantity) : Math.min(BACKORDER_MAX_QUANTITY, requestedQuantity);
       return [...prev, { product, quantity: addedQuantity }];
     });
 
@@ -63,7 +61,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems(prev =>
       prev.map(i =>
         i.product.id === productId
-          ? { ...i, quantity: Math.min(quantity, Math.max(1, i.product.stock)) }
+          ? { ...i, quantity: i.product.stock > 0 ? Math.min(quantity, i.product.stock) : Math.min(quantity, BACKORDER_MAX_QUANTITY) }
           : i,
       ),
     );

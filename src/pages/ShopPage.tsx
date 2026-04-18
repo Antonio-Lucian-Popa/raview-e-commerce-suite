@@ -89,16 +89,22 @@ export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const selectedCategoryId = searchParams.get('categoryId') || '';
+  const brandIdsParam = searchParams.get('brandIds') || '';
+  const brandIdsFromUrl = useMemo(
+    () => brandIdsParam.split(',').map((value) => value.trim()).filter(Boolean),
+    [brandIdsParam],
+  );
   const [selectedMinPrice, selectedMaxPrice] = clampPriceRange(
     parsePriceParam(searchParams.get('minPrice'), DEFAULT_PRICE_MIN),
     parsePriceParam(searchParams.get('maxPrice'), DEFAULT_PRICE_MAX),
   );
   const priceFilterActive = selectedMinPrice > DEFAULT_PRICE_MIN || selectedMaxPrice < DEFAULT_PRICE_MAX;
   const currentPage = Math.max(1, Number(searchParams.get('page') || '1'));
+  const inStockParam = searchParams.get('inStock') === 'true';
   const pageSize = 12;
   const [sortBy, setSortBy] = useState('newest');
-  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-  const [inStockOnly, setInStockOnly] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState<string[]>(brandIdsFromUrl);
+  const [inStockOnly, setInStockOnly] = useState(inStockParam);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [priceRange, setPriceRange] = useState(() => clampPriceRange(selectedMinPrice, selectedMaxPrice));
 
@@ -162,6 +168,14 @@ export default function ShopPage() {
   }, [selectedMinPrice, selectedMaxPrice]);
 
   useEffect(() => {
+    setInStockOnly(inStockParam);
+  }, [inStockParam]);
+
+  useEffect(() => {
+    setSelectedBrands(brandIdsFromUrl);
+  }, [brandIdsFromUrl]);
+
+  useEffect(() => {
     if (productsData && currentPage > totalPages) {
       updatePage(totalPages);
     }
@@ -184,16 +198,32 @@ export default function ShopPage() {
   };
 
   const toggleBrand = (brandId: string) => {
-    setSelectedBrands((prev) => {
-      const next = prev.includes(brandId) ? prev.filter((id) => id !== brandId) : [...prev, brandId];
-      updatePage(1);
-      return next;
-    });
+    const nextBrands = selectedBrands.includes(brandId)
+      ? selectedBrands.filter((id) => id !== brandId)
+      : [...selectedBrands, brandId];
+    const next = new URLSearchParams(searchParams);
+    next.set('page', '1');
+
+    if (nextBrands.length) {
+      next.set('brandIds', nextBrands.join(','));
+    } else {
+      next.delete('brandIds');
+    }
+
+    setSelectedBrands(nextBrands);
+    setSearchParams(next);
   };
 
   const updateStockOnly = (checked: boolean) => {
     setInStockOnly(checked);
-    updatePage(1);
+    const next = new URLSearchParams(searchParams);
+    next.set('page', '1');
+    if (checked) {
+      next.set('inStock', 'true');
+    } else {
+      next.delete('inStock');
+    }
+    setSearchParams(next);
   };
 
   const updatePriceFilter = (range: number[]) => {
@@ -249,6 +279,8 @@ export default function ShopPage() {
     setInStockOnly(false);
     const next = new URLSearchParams(searchParams);
     next.delete('categoryId');
+    next.delete('brandIds');
+    next.delete('inStock');
     next.delete('minPrice');
     next.delete('maxPrice');
     next.set('page', '1');

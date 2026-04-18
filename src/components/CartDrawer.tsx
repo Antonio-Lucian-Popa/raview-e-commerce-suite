@@ -55,7 +55,7 @@ export function CartDrawer() {
                         <button
                           className="p-1 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
                           onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          disabled={item.quantity >= item.product.stock}
+                          disabled={item.quantity >= (item.product.stock > 0 ? item.product.stock : 99)}
                         >
                           <Plus className="h-3 w-3" />
                         </button>
