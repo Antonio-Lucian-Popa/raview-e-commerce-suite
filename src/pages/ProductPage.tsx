@@ -23,8 +23,12 @@ import {
 import { Product } from '@/types';
 
 const hiddenSpecKeys = new Set([
+  'code',
   'source',
+  'sourceUrl',
+  'siteProductId',
   'sourceRow',
+  'sourceImages',
   'resourceLinks',
   'attributes',
   'importedFrom',
