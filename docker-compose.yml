@@ -2,6 +2,7 @@ services:
   raview-frontend:
     build:
       context: .
+      dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api/v1}
         VITE_EUR_TO_RON: ${VITE_EUR_TO_RON:-5}

@@ -1,4 +1,5 @@
 .git
+.gitignore
 .codex
 node_modules
 dist
