@@ -4,10 +4,16 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api/v1}
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
         VITE_EUR_TO_RON: ${VITE_EUR_TO_RON:-5}
     image: raview-e-commerce-frontend:latest
-    container_name: raview-frontend
+    container_name: ravio_frontend
     restart: unless-stopped
-    ports:
-      - "${APP_PORT:-8080}:80"
+    expose:
+      - "80"
+    networks:
+      - ravio-net
+
+networks:
+  ravio-net:
+    external: true

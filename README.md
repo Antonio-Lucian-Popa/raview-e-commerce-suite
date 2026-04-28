@@ -10,18 +10,17 @@ Build si pornire locala:
 docker compose up --build -d
 ```
 
-Aplicatia va fi disponibila pe `http://localhost:8080`.
+Containerul frontend ruleaza in reteaua Docker externa `ravio-net`, in spatele reverse proxy-ului Nginx.
 
 Configurare pentru server:
 
 ```bash
-VITE_API_URL=https://api.example.ro/api/v1 APP_PORT=80 docker compose up --build -d
+VITE_API_URL=/api/v1 docker compose up --build -d
 ```
 
 Variabile disponibile:
 
-- `VITE_API_URL` - URL-ul backend-ului, implicit `http://localhost:3000/api/v1`.
+- `VITE_API_URL` - URL-ul backend-ului prin reverse proxy, implicit `/api/v1`.
 - `VITE_EUR_TO_RON` - cursul implicit EUR/RON, implicit `5`.
-- `APP_PORT` - portul expus pe host, implicit `8080`.
 
 Nota: fiind un frontend Vite static, variabilele `VITE_*` sunt incluse in bundle la build. Dupa schimbarea lor, imaginea trebuie reconstruita cu `docker compose up --build -d`.
