@@ -41,7 +41,7 @@ export default function AdminLoginPage() {
         <div className="relative overflow-hidden bg-gradient-dark p-8 md:p-12 text-primary-foreground flex flex-col justify-center">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,206,84,0.15),transparent_40%)]" />
           <div className="relative">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-accent">RaView Admin</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Ravlux Admin</p>
             <h1 className="mt-4 text-3xl font-display font-bold leading-tight md:text-4xl">
               Administrează-ți magazinul rapid și simplu.
             </h1>

@@ -47,7 +47,7 @@ export default function ContactPage() {
               style={{ border: 0 }}
               allowFullScreen
               loading="lazy"
-              title="Locația RaView Lighting"
+              title="Locația Ravlux Lighting"
             />
           </div>
         </div>

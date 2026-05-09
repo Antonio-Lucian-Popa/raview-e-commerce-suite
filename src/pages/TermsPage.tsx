@@ -8,7 +8,7 @@ export default function TermsPage() {
       <div className="prose prose-sm max-w-none text-muted-foreground space-y-4">
         <p>Ultima actualizare: Ianuarie 2026</p>
         <h2 className="text-lg font-semibold text-foreground">1. Informații generale</h2>
-        <p>Acești termeni și condiții reglementează utilizarea site-ului raviewlighting.ro și achiziția de produse prin intermediul magazinului online operat de RaView Lighting SRL.</p>
+        <p>Acești termeni și condiții reglementează utilizarea site-ului raviewlighting.ro și achiziția de produse prin intermediul magazinului online operat de Ravlux Lighting SRL.</p>
         <h2 className="text-lg font-semibold text-foreground">2. Produse și prețuri</h2>
         <p>Toate prețurile afișate includ TVA. Ne rezervăm dreptul de a modifica prețurile fără notificare prealabilă.</p>
         <h2 className="text-lg font-semibold text-foreground">3. Comenzi și livrare</h2>

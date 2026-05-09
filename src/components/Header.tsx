@@ -88,16 +88,15 @@ export function Header() {
       {/* Main header */}
       <header className="sticky top-0 z-50 glass border-b">
         <div className="container-page flex min-h-[var(--header-height)] flex-col justify-center py-2 lg:h-[var(--header-height)] lg:py-0">
-          <div className="flex items-center justify-between gap-3">
-          <Link to="/" className="flex min-w-0 items-center gap-2">
-            <span className="text-xl font-display font-bold tracking-tight sm:text-2xl">
-              Ra<span className="text-gradient-gold">View</span>
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground -mb-1 hidden sm:block">Lighting</span>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex min-w-0 flex-shrink-0 items-center gap-2">
+              <span className="text-xl font-display font-bold tracking-tight sm:text-2xl">
+                Rav<span className="text-gradient-gold">lux</span>
+              </span>
+            </Link>
 
           {/* Desktop nav */}
-          <nav className="hidden lg:flex items-center gap-8">
+          <nav className="hidden flex-1 items-center justify-center gap-8 lg:flex">
             {navLinks.map(link => (
               <div
                 key={link.href}
@@ -144,7 +143,7 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="ml-auto flex min-w-0 items-center justify-end gap-0.5 sm:gap-2">
+          <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-0.5 sm:gap-2">
             {searchOpen ? (
               <div className="hidden items-center gap-2 sm:flex">
                 <input
@@ -223,7 +222,7 @@ export function Header() {
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/70 bg-background/95 p-5 backdrop-blur">
               <div>
                 <p className="font-display text-xl font-bold">
-                  Ra<span className="text-gradient-gold">View</span>
+                  Rav<span className="text-gradient-gold">lux</span>
                 </p>
                 <p className="text-xs text-muted-foreground">Navigare rapidă</p>
               </div>

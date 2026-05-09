@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Grid3X3, SlidersHorizontal, X } from 'lucide-react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
@@ -289,38 +289,6 @@ export default function ShopPage() {
 
   const FiltersContent = () => (
     <div className="space-y-6">
-      <div>
-        <h4 className="mb-3 text-sm font-semibold">Categorii</h4>
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={() => updateCategory('')}
-            className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
-              !selectedCategoryId ? 'bg-accent/10 font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary'
-            }`}
-          >
-            <span>Toate categoriile</span>
-            <Grid3X3 className="h-4 w-4" />
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => updateCategory(selectedCategoryId === category.id ? '' : category.id)}
-              className={`flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                selectedCategoryId === category.id ? 'bg-accent/10 font-semibold text-foreground' : 'text-muted-foreground hover:bg-secondary'
-              }`}
-            >
-              <span className="line-clamp-1">{category.name}</span>
-              {(() => {
-                const Icon = getCategoryIcon(category);
-                return <Icon className="h-4 w-4 shrink-0" />;
-              })()}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div>
         <h4 className="font-semibold text-sm mb-3">Branduri</h4>
         <div className="space-y-2">

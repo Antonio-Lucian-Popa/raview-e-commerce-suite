@@ -6,7 +6,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
 import { getCategoryIcon } from '@/lib/category-icons';
-import heroImage from '@/assets/hero-showroom.jpg';
+import heroImage from '@/assets/hero-showroom-bright.jpg';
 
 const benefits = [
   { icon: Truck, title: 'Livrare Rapidă', desc: 'Livrare gratuită peste 500 lei' },
@@ -40,16 +40,16 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative h-[85vh] min-h-[600px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="RaView Lighting Showroom" className="w-full h-full object-cover" width={1920} height={1080} />
-          <div className="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent" />
+          <img src={heroImage} alt="Ravlux showroom luminos" className="w-full h-full object-cover" width={1672} height={941} />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/55 to-background/5" />
         </div>
         <div className="relative container-page">
           <div className="max-w-xl space-y-6 animate-fade-in">
             <span className="inline-block text-sm uppercase tracking-[0.3em] text-accent font-medium">Corpuri de Iluminat</span>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.1] text-background">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-display font-bold leading-[1.1] text-foreground">
               Redefinim spațiul prin <span className="text-gradient-gold">lumină</span>
             </h1>
-            <p className="text-lg text-background/70 max-w-md">
+            <p className="text-lg text-foreground/70 max-w-md">
               Descoperă soluții premium de iluminat interior și exterior. Design modern, calitate garantată.
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
@@ -59,7 +59,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-background/35 bg-foreground/25 text-background backdrop-blur-sm hover:bg-background hover:text-foreground"
+                className="border-foreground/20 bg-background/45 text-foreground backdrop-blur-sm hover:bg-background"
                 asChild
               >
                 <Link to="/contact">Vizitează Showroom-ul</Link>
@@ -247,7 +247,7 @@ export default function HomePage() {
               </div>
             </div>
             <div className="w-full md:w-80 h-60 rounded-xl overflow-hidden">
-              <img src={heroImage} alt="Showroom RaView" loading="lazy" className="w-full h-full object-cover" />
+              <img src={heroImage} alt="Showroom Ravlux" loading="lazy" className="w-full h-full object-cover" />
             </div>
           </div>
         </div>

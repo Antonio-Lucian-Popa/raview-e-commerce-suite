@@ -27,7 +27,7 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <span className="text-2xl font-display font-bold">
-              Ra<span className="text-gradient-gold">View</span> Lighting
+              Rav<span className="text-gradient-gold">lux</span>
             </span>
             <p className="text-primary-foreground/60 text-sm leading-relaxed">
               Redefinim spațiul prin lumină. Showroom dedicat iluminatului interior și exterior în Bacău.
@@ -74,7 +74,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-primary-foreground/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-primary-foreground/40">© {new Date().getFullYear()} RaView Lighting. Toate drepturile rezervate.</p>
+          <p className="text-xs text-primary-foreground/40">© {new Date().getFullYear()} Ravlux Lighting. Toate drepturile rezervate.</p>
           <div className="flex items-center gap-4">
             <Link to="/terms" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Termeni</Link>
             <Link to="/privacy" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Confidențialitate</Link>
