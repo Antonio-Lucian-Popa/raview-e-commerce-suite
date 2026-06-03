@@ -2,15 +2,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export function ProductCardSkeleton() {
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-border/80 bg-card shadow-sm">
       <Skeleton className="aspect-square w-full" />
-      <div className="p-4 space-y-2">
-        <Skeleton className="h-3 w-16" />
+      <div className="p-4">
+        <div className="mb-3 flex justify-between gap-4">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="h-3 w-20" />
+        </div>
         <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-3 w-24" />
-        <div className="flex justify-between pt-1">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-8 w-8 rounded" />
+        <Skeleton className="mt-2 h-4 w-4/5" />
+        <Skeleton className="mt-3 h-3 w-24" />
+        <div className="flex items-end justify-between pt-5">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-8 w-8 rounded-md" />
         </div>
       </div>
     </div>
