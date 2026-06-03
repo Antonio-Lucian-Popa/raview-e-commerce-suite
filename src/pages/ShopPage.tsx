@@ -17,7 +17,7 @@ import { Category } from '@/types';
 
 const DEFAULT_PRICE_MIN = 0;
 const DEFAULT_PRICE_MAX = 10000;
-const PRICE_STEP = 50;
+const PRICE_STEP = 1;
 
 function CategoryPill({
   category,
@@ -67,29 +67,17 @@ function parsePriceParam(value: string | null, fallback: number) {
 function clampPriceRange(min: number, max: number) {
   const clampedMin = Math.min(Math.max(DEFAULT_PRICE_MIN, min), DEFAULT_PRICE_MAX);
   const clampedMax = Math.min(Math.max(DEFAULT_PRICE_MIN, max), DEFAULT_PRICE_MAX);
-  const [nextMin, nextMax] = clampedMin <= clampedMax ? [clampedMin, clampedMax] : [clampedMax, clampedMin];
-
-  if (nextMax - nextMin >= PRICE_STEP) {
-    return [nextMin, nextMax];
-  }
-
-  if (nextMin <= DEFAULT_PRICE_MIN) {
-    return [DEFAULT_PRICE_MIN, PRICE_STEP];
-  }
-
-  return [Math.max(DEFAULT_PRICE_MIN, nextMax - PRICE_STEP), nextMax];
+  return clampedMin <= clampedMax ? [clampedMin, clampedMax] : [clampedMax, clampedMin];
 }
 
 function clampPriceControl(index: 0 | 1, value: number, range: number[]) {
+  const nextValue = Math.min(Math.max(DEFAULT_PRICE_MIN, value), DEFAULT_PRICE_MAX);
+
   if (index === 0) {
-    return [Math.min(Math.max(DEFAULT_PRICE_MIN, value), range[1] - PRICE_STEP), range[1]];
+    return [nextValue, range[1]];
   }
 
-  return [range[0], Math.max(Math.min(DEFAULT_PRICE_MAX, value), range[0] + PRICE_STEP)];
-}
-
-function getRangePercent(value: number) {
-  return ((value - DEFAULT_PRICE_MIN) / (DEFAULT_PRICE_MAX - DEFAULT_PRICE_MIN)) * 100;
+  return [range[0], nextValue];
 }
 
 export default function ShopPage() {
@@ -261,22 +249,6 @@ export default function ShopPage() {
     setPriceRange(clampPriceControl(index, nextValue, priceRange));
   };
 
-  const updatePriceSlider = (index: 0 | 1, value: string) => {
-    const nextValue = Number(value);
-    if (!Number.isFinite(nextValue)) return;
-
-    setPriceRange(clampPriceControl(index, nextValue, priceRange));
-  };
-
-  const commitPriceSlider = (index: 0 | 1, value: string) => {
-    const nextValue = Number(value);
-    if (!Number.isFinite(nextValue)) return;
-
-    const nextRange = clampPriceControl(index, nextValue, priceRange);
-    setPriceRange(nextRange);
-    updatePriceFilter(nextRange);
-  };
-
   const resetPriceFilter = () => {
     setPriceRange([DEFAULT_PRICE_MIN, DEFAULT_PRICE_MAX]);
     updatePriceFilter([DEFAULT_PRICE_MIN, DEFAULT_PRICE_MAX]);
@@ -329,45 +301,7 @@ export default function ShopPage() {
           )}
         </div>
         <div className="rounded-lg border border-border/70 bg-secondary/20 p-3">
-          <div className="py-3">
-            <div className="relative h-7">
-              <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-secondary" />
-              <div
-                className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-primary"
-                style={{
-                  left: `${getRangePercent(priceRange[0])}%`,
-                  right: `${100 - getRangePercent(priceRange[1])}%`,
-                }}
-              />
-              <input
-                type="range"
-                min={DEFAULT_PRICE_MIN}
-                max={DEFAULT_PRICE_MAX}
-                step={PRICE_STEP}
-                value={priceRange[0]}
-                onChange={(event) => updatePriceSlider(0, event.target.value)}
-                onMouseUp={(event) => commitPriceSlider(0, event.currentTarget.value)}
-                onTouchEnd={(event) => commitPriceSlider(0, event.currentTarget.value)}
-                onBlur={(event) => commitPriceSlider(0, event.currentTarget.value)}
-                aria-label="Preț minim"
-                className="pointer-events-none absolute left-0 top-0 z-20 h-7 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-primary [&::-moz-range-thumb]:bg-background [&::-moz-range-thumb]:shadow-sm [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm"
-              />
-              <input
-                type="range"
-                min={DEFAULT_PRICE_MIN}
-                max={DEFAULT_PRICE_MAX}
-                step={PRICE_STEP}
-                value={priceRange[1]}
-                onChange={(event) => updatePriceSlider(1, event.target.value)}
-                onMouseUp={(event) => commitPriceSlider(1, event.currentTarget.value)}
-                onTouchEnd={(event) => commitPriceSlider(1, event.currentTarget.value)}
-                onBlur={(event) => commitPriceSlider(1, event.currentTarget.value)}
-                aria-label="Preț maxim"
-                className="pointer-events-none absolute left-0 top-0 z-30 h-7 w-full appearance-none bg-transparent [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-primary [&::-moz-range-thumb]:bg-background [&::-moz-range-thumb]:shadow-sm [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-primary [&::-webkit-slider-thumb]:bg-background [&::-webkit-slider-thumb]:shadow-sm"
-              />
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <span className="mb-1 block text-[11px] text-muted-foreground">De la</span>
               <Input
