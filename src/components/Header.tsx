@@ -143,7 +143,7 @@ export function Header() {
           </nav>
 
           {/* Actions */}
-          <div className="flex min-w-0 flex-shrink-0 items-center justify-end gap-0.5 sm:gap-2">
+          <div className="ml-auto flex min-w-0 flex-shrink-0 items-center justify-end gap-0.5 sm:gap-2">
             {searchOpen ? (
               <div className="hidden items-center gap-2 sm:flex">
                 <input
