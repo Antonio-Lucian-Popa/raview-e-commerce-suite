@@ -1,6 +1,6 @@
 import { Product } from '@/types';
 
-const VAT_RATE = 0.21;
+const DEFAULT_VAT_RATE = 21;
 const DEFAULT_EUR_TO_RON = Number(import.meta.env.VITE_EUR_TO_RON ?? 5);
 
 const getProductCurrency = (product: Product) =>
@@ -26,12 +26,23 @@ export const getProductPriceWithoutVat = (product: Product) =>
 export const getProductOldPriceWithoutVat = (product: Product) =>
   product.oldPrice == null ? null : convertProductPriceToRon(product, product.oldPrice);
 
-export const getProductPriceWithVat = (product: Product) =>
-  getProductPriceWithoutVat(product) * (1 + VAT_RATE);
+const getVatRate = (product: Product) => {
+  const rate = Number(product.vatRate ?? DEFAULT_VAT_RATE);
+  return Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_VAT_RATE;
+};
+
+const priceIncludesVat = (product: Product) => product.specs?.priceIncludesVat === true;
+
+export const getProductPriceWithVat = (product: Product) => {
+  const price = getProductPriceWithoutVat(product);
+  return priceIncludesVat(product) ? price : price * (1 + getVatRate(product) / 100);
+};
 
 export const getProductOldPriceWithVat = (product: Product) => {
   const oldPrice = getProductOldPriceWithoutVat(product);
-  return oldPrice == null ? null : oldPrice * (1 + VAT_RATE);
+  return oldPrice == null || priceIncludesVat(product)
+    ? oldPrice
+    : oldPrice * (1 + getVatRate(product) / 100);
 };
 
 export const getProductLineTotalWithVat = (product: Product, quantity: number) =>
@@ -44,4 +55,4 @@ export const formatLei = (value: number) =>
     maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
   }).format(value);
 
-export const getVatLabel = () => `TVA ${Math.round(VAT_RATE * 100)}% inclus`;
+export const getVatLabel = (product?: Product) => `TVA ${Math.round(product ? getVatRate(product) : DEFAULT_VAT_RATE)}% inclus`;

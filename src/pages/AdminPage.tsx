@@ -795,6 +795,16 @@ export default function AdminPage() {
   const deleteCategoryMutation = useMutation({ mutationFn: (id: string) => api.categories.remove(token, id), onSuccess: async () => { toast.success('Categorie ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deleteBrandMutation = useMutation({ mutationFn: (id: string) => api.brands.remove(token, id), onSuccess: async () => { toast.success('Brand șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deletePromotionMutation = useMutation({ mutationFn: (id: string) => api.promotions.remove(token, id), onSuccess: async () => { toast.success('Promoție ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
+  const refundOrderMutation = useMutation({
+    mutationFn: (orderId: string) => api.payments.refundOrder(token, orderId),
+    onSuccess: async (order) => {
+      toast.success('Rambursarea a fost inițiată, iar stocul a fost refăcut.');
+      setSelectedOrder(order);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'stats', 'orders'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   /* ── edit helpers ── */
   const editProduct = (product: Product) => {
@@ -1372,6 +1382,20 @@ export default function AdminPage() {
                       <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{formatMoney(selectedOrder.shipping)}</span></div>
                       <div className="flex justify-between border-t border-border/70 pt-3 font-semibold"><span>Total</span><span>{formatMoney(selectedOrder.total)}</span></div>
                     </div>
+                    {selectedOrder.paymentStatus === 'paid' && selectedOrder.status !== 'refunded' && (
+                      <Button
+                        variant="destructive"
+                        className="mt-4 w-full"
+                        disabled={refundOrderMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm('Confirmi rambursarea integrală? Acțiunea va trimite refund-ul în Stripe și va reface stocul.')) {
+                            refundOrderMutation.mutate(selectedOrder.id);
+                          }
+                        }}
+                      >
+                        {refundOrderMutation.isPending ? 'Se rambursează...' : 'Rambursează integral'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </>

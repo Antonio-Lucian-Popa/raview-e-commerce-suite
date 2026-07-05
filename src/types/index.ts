@@ -60,6 +60,7 @@ export interface Product {
   oldPrice?: number | null;
   currency?: 'RON' | 'EUR' | string | null;
   exchangeRate?: number | null;
+  vatRate?: number | null;
   stock: number;
   featured: boolean;
   bestseller: boolean;

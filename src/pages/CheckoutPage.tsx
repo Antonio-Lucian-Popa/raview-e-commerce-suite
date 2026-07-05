@@ -192,7 +192,7 @@ export default function CheckoutPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal cu TVA</span><span>{formatLei(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : formatLei(shipping)}</span></div>
               <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{formatLei(total)}</span></div>
-              <p className="text-xs text-muted-foreground">Prețurile includ TVA 21%.</p>
+              <p className="text-xs text-muted-foreground">Prețurile includ TVA.</p>
             </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" disabled={processing}>
               {processing ? 'Se procesează...' : paymentMethod === 'card' ? `Plătește online · ${formatLei(total)}` : `Plasează comanda · ${formatLei(total)}`}

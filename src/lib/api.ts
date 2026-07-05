@@ -66,6 +66,7 @@ const normalizeProduct = (product: any): Product => {
     oldPrice,
     currency: product.currency ?? product.specs?.currency ?? 'RON',
     exchangeRate: product.exchangeRate == null ? null : parseNumber(product.exchangeRate),
+    vatRate: product.vatRate == null ? null : parseNumber(product.vatRate),
     stock: Number(product.stock ?? 0),
     featured: Boolean(product.featured),
     bestseller: Boolean(product.bestseller),
@@ -492,6 +493,10 @@ export const api = {
     async createCheckoutSession(payload: { orderId: string; successUrl: string; cancelUrl: string }): Promise<{ sessionId: string; checkoutUrl: string }> {
       return request('/payments/checkout-session', { method: 'POST', body: payload });
     },
+    async refundOrder(token: string, orderId: string): Promise<Order> {
+      const response = await request<any>(`/payments/${orderId}/refund`, { method: 'POST', token });
+      return normalizeOrder(response);
+    },
   },
   orders: {
     async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number, paymentMethod: PaymentMethod): Promise<Order> {
@@ -513,6 +518,7 @@ export const api = {
           },
           items,
           shipping,
+          paymentMethod: paymentMethod === 'card' ? 'online_card' : 'cash_on_delivery',
           notes: [
             `Metoda de plata: ${paymentMethod === 'card' ? 'card online' : 'ramburs la curier'}`,
             payload.notes,
