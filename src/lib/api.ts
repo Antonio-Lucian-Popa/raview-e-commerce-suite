@@ -1,5 +1,6 @@
 import {
   AdminNotification,
+  AuditLog,
   AuthSession,
   Brand,
   Category,
@@ -222,6 +223,21 @@ const createQueryString = (params: Record<string, string | number | boolean | un
 };
 
 export const api = {
+  audit: {
+    async getAll(
+      token: string,
+      params?: { page?: number; limit?: number; search?: string },
+    ): Promise<PaginatedResponse<AuditLog>> {
+      return request<PaginatedResponse<AuditLog>>(
+        `/audit-logs${createQueryString({
+          page: params?.page ?? 1,
+          limit: params?.limit ?? 20,
+          search: params?.search,
+        })}`,
+        { token },
+      );
+    },
+  },
   auth: {
     async login(email: string, password: string): Promise<LoginResponse> {
       const tokens = await request<{ accessToken: string; refreshToken: string }>('/auth/login', {
@@ -344,6 +360,10 @@ export const api = {
     },
     async getBySlug(slug: string): Promise<Product> {
       const response = await request<any>(`/products/slug/${slug}`);
+      return normalizeProduct(response);
+    },
+    async getById(id: string): Promise<Product> {
+      const response = await request<any>(`/products/${id}`);
       return normalizeProduct(response);
     },
     async getRelated(categoryId: string, excludeId: string): Promise<Product[]> {

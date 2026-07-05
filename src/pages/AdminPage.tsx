@@ -10,6 +10,7 @@ import {
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Bell,
+  ClipboardList,
   Eye,
   LayoutGrid,
   Loader2,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { ProductSearchSelect } from '@/components/admin/ProductSearchSelect';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,6 +40,7 @@ import {
   Brand,
   Category,
   AdminNotification,
+  AuditLog,
   CreateBrandPayload,
   CreateCategoryPayload,
   CreateProductPayload,
@@ -47,7 +50,7 @@ import {
   Promotion,
 } from '@/types';
 
-type AdminTab = 'products' | 'categories' | 'brands' | 'promotions' | 'orders';
+type AdminTab = 'products' | 'categories' | 'brands' | 'promotions' | 'orders' | 'audit';
 
 type ProductFormState = {
   id?: string;
@@ -383,6 +386,7 @@ const sidebarItems: { key: AdminTab; label: string; icon: typeof Package2 }[] = 
   { key: 'brands', label: 'Branduri', icon: Tags },
   { key: 'promotions', label: 'Promoții', icon: Megaphone },
   { key: 'orders', label: 'Comenzi', icon: ShoppingCart },
+  { key: 'audit', label: 'Istoric acțiuni', icon: ClipboardList },
 ];
 
 /* ───────── MAIN ───────── */
@@ -413,25 +417,29 @@ export default function AdminPage() {
   const [brandSearch, setBrandSearch] = useState('');
   const [promotionSearch, setPromotionSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
+  const [auditSearch, setAuditSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
   const [categoriesPage, setCategoriesPage] = useState(1);
   const [brandsPage, setBrandsPage] = useState(1);
   const [promotionsPage, setPromotionsPage] = useState(1);
   const [ordersPage, setOrdersPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
 
   const deferredProductSearch = useDeferredValue(productSearch);
   const deferredCategorySearch = useDeferredValue(categorySearch);
   const deferredBrandSearch = useDeferredValue(brandSearch);
   const deferredPromotionSearch = useDeferredValue(promotionSearch);
   const deferredOrderSearch = useDeferredValue(orderSearch);
+  const deferredAuditSearch = useDeferredValue(auditSearch);
 
   const token = session?.accessToken ?? '';
   const currentUser = session?.user;
-  const needsProducts = activeTab === 'products' || productDialogOpen || promotionDialogOpen;
+  const needsProducts = activeTab === 'products' || productDialogOpen;
   const needsCategories = activeTab === 'categories' || categoryDialogOpen || productDialogOpen || promotionDialogOpen;
   const needsBrands = activeTab === 'brands' || brandDialogOpen || productDialogOpen;
   const needsPromotions = activeTab === 'promotions' || promotionDialogOpen;
   const needsOrders = activeTab === 'orders';
+  const needsAudit = activeTab === 'audit';
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['admin', 'products', productsPage, deferredProductSearch],
@@ -461,11 +469,6 @@ export default function AdminPage() {
     queryFn: () => api.brands.adminGetAll(token, { page: 1, limit: 100 }),
     enabled: Boolean(token) && productDialogOpen,
   });
-  const { data: productsLookup } = useQuery({
-    queryKey: ['admin', 'products', 'lookup'],
-    queryFn: () => api.products.adminGetAll(token, { page: 1, limit: 100 }),
-    enabled: Boolean(token) && promotionDialogOpen,
-  });
   const { data: promotionsData, isLoading: promotionsLoading } = useQuery({
     queryKey: ['admin', 'promotions', promotionsPage, deferredPromotionSearch],
     queryFn: () => api.promotions.adminGetAll(token, { page: promotionsPage, limit: pageSize, search: deferredPromotionSearch || undefined }),
@@ -476,6 +479,12 @@ export default function AdminPage() {
     queryKey: ['admin', 'orders', ordersPage, deferredOrderSearch],
     queryFn: () => api.orders.adminGetAll(token, { page: ordersPage, limit: pageSize, search: deferredOrderSearch || undefined }),
     enabled: Boolean(token) && needsOrders,
+    placeholderData: (previousData) => previousData,
+  });
+  const { data: auditData, isLoading: auditLoading } = useQuery({
+    queryKey: ['admin', 'audit', auditPage, deferredAuditSearch],
+    queryFn: () => api.audit.getAll(token, { page: auditPage, limit: 20, search: deferredAuditSearch || undefined }),
+    enabled: Boolean(token) && needsAudit,
     placeholderData: (previousData) => previousData,
   });
   const { data: statsCategoriesData } = useQuery({
@@ -504,7 +513,6 @@ export default function AdminPage() {
   const orders = ordersData?.items ?? [];
   const categoryOptions = categoriesLookup?.items ?? categories;
   const brandOptions = brandsLookup?.items ?? brands;
-  const promotionProducts = productsLookup?.items ?? products;
   const productsTotalPages = Math.max(1, productsData?.meta.totalPages ?? 1);
   const unreadNotifications = useMemo(
     () => notifications.filter((notification) => !notification.read),
@@ -556,6 +564,7 @@ export default function AdminPage() {
   const brandsTotalPages = Math.max(1, brandsData?.meta.totalPages ?? 1);
   const promotionsTotalPages = Math.max(1, promotionsData?.meta.totalPages ?? 1);
   const ordersTotalPages = Math.max(1, ordersData?.meta.totalPages ?? 1);
+  const auditTotalPages = Math.max(1, auditData?.meta.totalPages ?? 1);
 
   useEffect(() => {
     setProductsPage(1);
@@ -578,6 +587,10 @@ export default function AdminPage() {
   }, [deferredOrderSearch]);
 
   useEffect(() => {
+    setAuditPage(1);
+  }, [deferredAuditSearch]);
+
+  useEffect(() => {
     if (productsPage > productsTotalPages) setProductsPage(productsTotalPages);
   }, [productsPage, productsTotalPages]);
 
@@ -596,6 +609,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (ordersPage > ordersTotalPages) setOrdersPage(ordersTotalPages);
   }, [ordersPage, ordersTotalPages]);
+
+  useEffect(() => {
+    if (auditPage > auditTotalPages) setAuditPage(auditTotalPages);
+  }, [auditPage, auditTotalPages]);
 
   useEffect(() => {
     if (!token) {
@@ -1292,6 +1309,62 @@ export default function AdminPage() {
           </Card>
         )}
 
+        {activeTab === 'audit' && (
+          <Card title="Istoric acțiuni personal">
+            <SearchToolbar
+              placeholder="Caută după angajat, email, acțiune sau rută…"
+              value={auditSearch}
+              onChange={setAuditSearch}
+              countLabel={`${auditData?.meta.total ?? 0} acțiuni`}
+            />
+            <div className="mt-4 space-y-3">
+              {auditLoading && !auditData ? (
+                <LoadingBlock message="Se încarcă istoricul..." />
+              ) : (
+                <>
+                  {(auditData?.items ?? []).map((entry: AuditLog) => (
+                    <article key={entry.id} className="rounded-lg border border-border/70 bg-secondary/15 p-4">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusPill>{entry.success ? 'Reușită' : 'Eșuată'}</StatusPill>
+                            <span className="rounded bg-secondary px-2 py-0.5 font-mono text-xs">{entry.method}</span>
+                            <p className="break-all text-sm font-medium">{entry.path}</p>
+                          </div>
+                          <p className="mt-2 text-sm">
+                            <span className="font-semibold">{entry.actorName}</span>
+                            <span className="text-muted-foreground"> · {entry.actorEmail} · {entry.actorRole}</span>
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {entry.action} · IP {entry.ipAddress || 'necunoscut'} · HTTP {entry.statusCode} · {entry.durationMs} ms
+                          </p>
+                          {entry.errorMessage && <p className="mt-2 text-sm text-destructive">{entry.errorMessage}</p>}
+                        </div>
+                        <time className="shrink-0 text-xs text-muted-foreground">{formatDateTime(entry.createdAt)}</time>
+                      </div>
+                      {entry.payload && Object.keys(entry.payload).length > 0 && (
+                        <details className="mt-3 rounded-md border border-border/60 bg-background/70 p-3">
+                          <summary className="cursor-pointer text-xs font-medium">Vezi datele acțiunii</summary>
+                          <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-all text-xs text-muted-foreground">
+                            {JSON.stringify(entry.payload, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </article>
+                  ))}
+                  {(auditData?.items ?? []).length === 0 && <EmptyBlock message="Nu există acțiuni înregistrate." />}
+                  <PaginationControls
+                    page={auditPage}
+                    totalPages={auditTotalPages}
+                    onPrevious={() => setAuditPage((page) => Math.max(1, page - 1))}
+                    onNext={() => setAuditPage((page) => Math.min(auditTotalPages, page + 1))}
+                  />
+                </>
+              )}
+            </div>
+          </Card>
+        )}
+
         <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
           <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
             {selectedOrder && (
@@ -1662,10 +1735,11 @@ export default function AdminPage() {
               {promotionForm.scope === 'product' ? (
                 <div>
                   <Label>Produs</Label>
-                    <Select value={promotionForm.productId} onValueChange={(v) => setPromotionForm({ ...promotionForm, productId: v })}>
-                      <SelectTrigger className="mt-1.5"><SelectValue placeholder="Alege produsul" /></SelectTrigger>
-                      <SelectContent>{promotionProducts.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                    </Select>
+                  <ProductSearchSelect
+                    token={token}
+                    value={promotionForm.productId}
+                    onValueChange={(productId) => setPromotionForm({ ...promotionForm, productId })}
+                  />
                   </div>
               ) : (
                 <div>

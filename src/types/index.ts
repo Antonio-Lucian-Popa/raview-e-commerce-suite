@@ -186,6 +186,25 @@ export interface AdminNotification {
   read?: boolean;
 }
 
+export interface AuditLog {
+  id: string;
+  actorId?: string | null;
+  actorEmail: string;
+  actorName: string;
+  actorRole: string;
+  method: string;
+  path: string;
+  action: string;
+  statusCode: number;
+  success: boolean;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  payload?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  durationMs: number;
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   status: string;
