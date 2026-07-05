@@ -29,7 +29,7 @@ type NavLink = {
 
 const baseNavLinks: NavLink[] = [
   { label: 'Acasă', href: '/' },
-  { label: 'Magazine', href: '/shop' },
+  { label: 'Magazin', href: '/shop' },
   { label: 'Oferte', href: '/promotions' },
   { label: 'Comanda mea', href: '/track-order' },
   { label: 'Portofoliu', href: '/portfolio' },
