@@ -252,7 +252,7 @@ function formatOrderStatus(status?: string | null) {
   const labels: Record<string, string> = {
     pending: 'În așteptare',
     paid: 'Plătită',
-    processing: 'În procesare',
+    processing: 'În pregătire',
     shipped: 'Trimisă',
     delivered: 'Livrată',
     cancelled: 'Anulată',
@@ -273,6 +273,15 @@ function formatPaymentStatus(status?: string | null) {
 
   return labels[status ?? ''] ?? status ?? '—';
 }
+
+const orderStatusOptions = [
+  { value: 'pending', label: 'În așteptare' },
+  { value: 'paid', label: 'Plătită' },
+  { value: 'processing', label: 'În pregătire' },
+  { value: 'shipped', label: 'Trimisă' },
+  { value: 'delivered', label: 'Livrată' },
+  { value: 'cancelled', label: 'Anulată' },
+];
 
 function getOrderCustomer(order: Order) {
   return (
@@ -816,6 +825,17 @@ export default function AdminPage() {
     mutationFn: (orderId: string) => api.payments.refundOrder(token, orderId),
     onSuccess: async (order) => {
       toast.success('Rambursarea a fost inițiată, iar stocul a fost refăcut.');
+      setSelectedOrder(order);
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin', 'stats', 'orders'] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const updateOrderStatusMutation = useMutation({
+    mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
+      api.orders.adminUpdateStatus(token, orderId, status),
+    onSuccess: async (order) => {
+      toast.success(`Status actualizat: ${formatOrderStatus(order.status)}.`);
       setSelectedOrder(order);
       await queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
       await queryClient.invalidateQueries({ queryKey: ['admin', 'stats', 'orders'] });
@@ -1417,6 +1437,29 @@ export default function AdminPage() {
                       <p><span className="text-muted-foreground">Plată:</span> {formatPaymentStatus(selectedOrder.paymentStatus)}</p>
                       <p><span className="text-muted-foreground">Dată:</span> {formatDateTime(selectedOrder.createdAt)}</p>
                     </div>
+                    {selectedOrder.status !== 'refunded' && (
+                      <div className="mt-4">
+                        <Label htmlFor="order-status">Schimbă status</Label>
+                        <Select
+                          value={selectedOrder.status}
+                          disabled={updateOrderStatusMutation.isPending}
+                          onValueChange={(status) => {
+                            updateOrderStatusMutation.mutate({ orderId: selectedOrder.id, status });
+                          }}
+                        >
+                          <SelectTrigger id="order-status" className="mt-1.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {orderStatusOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -560,6 +560,14 @@ export const api = {
       );
       return { ...response, items: response.items.map(normalizeOrder) };
     },
+    async adminUpdateStatus(token: string, orderId: string, status: string): Promise<Order> {
+      const response = await request<any>(`/orders/${orderId}/status`, {
+        method: 'PATCH',
+        token,
+        body: { status },
+      });
+      return normalizeOrder(response);
+    },
     async track(orderNumber: string, contact: string): Promise<Order> {
       const response = await request<any>('/orders/track', {
         method: 'POST',
