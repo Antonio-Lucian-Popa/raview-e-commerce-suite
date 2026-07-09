@@ -107,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 <span className="text-sm text-muted-foreground line-through">{formatLei(oldPriceWithVat)}</span>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">{hasPrice ? getVatLabel() : 'Contactează-ne pentru ofertă'}</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">{hasPrice ? getVatLabel(product) : 'Contactează-ne pentru ofertă'}</p>
           </div>
           <Button
             size="icon"

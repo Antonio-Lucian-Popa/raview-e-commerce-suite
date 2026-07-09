@@ -331,7 +331,7 @@ export default function ProductPage() {
         <div className="min-w-0 shrink-0">
           <span className="block truncate font-bold leading-tight">{formatLei(priceWithVat)}</span>
           {oldPriceWithVat && <span className="text-xs text-muted-foreground line-through ml-1">{formatLei(oldPriceWithVat)}</span>}
-          <p className="truncate text-[11px] text-muted-foreground">{getVatLabel()}</p>
+          <p className="truncate text-[11px] text-muted-foreground">{getVatLabel(product)}</p>
         </div>
         <Button
           className="min-w-0 flex-1 bg-accent px-3 text-accent-foreground hover:bg-gold-dark"
