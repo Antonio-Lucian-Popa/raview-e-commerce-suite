@@ -283,6 +283,13 @@ const orderStatusOptions = [
   { value: 'cancelled', label: 'Anulată' },
 ];
 
+function getOrderStatusOptions(order: Order) {
+  if (order.paymentStatus === 'paid') {
+    return orderStatusOptions.filter((option) => option.value !== 'cancelled');
+  }
+  return orderStatusOptions;
+}
+
 function getOrderCustomer(order: Order) {
   return (
     order.customerSnapshot ??
@@ -1444,6 +1451,10 @@ export default function AdminPage() {
                           value={selectedOrder.status}
                           disabled={updateOrderStatusMutation.isPending}
                           onValueChange={(status) => {
+                            if (status === 'cancelled' && selectedOrder.paymentStatus === 'paid') {
+                              toast.error('O comandă plătită trebuie rambursată, nu doar anulată.');
+                              return;
+                            }
                             updateOrderStatusMutation.mutate({ orderId: selectedOrder.id, status });
                           }}
                         >
@@ -1451,7 +1462,7 @@ export default function AdminPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {orderStatusOptions.map((option) => (
+                            {getOrderStatusOptions(selectedOrder).map((option) => (
                               <SelectItem key={option.value} value={option.value}>
                                 {option.label}
                               </SelectItem>

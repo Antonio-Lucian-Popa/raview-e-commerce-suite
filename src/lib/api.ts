@@ -152,6 +152,26 @@ type UploadResponse = {
   size: number;
 };
 
+function getApiErrorMessage(errorData: unknown, fallback: string) {
+  if (!errorData || typeof errorData !== 'object') return fallback;
+
+  const data = errorData as Record<string, unknown>;
+  const directMessage = data.message;
+  if (typeof directMessage === 'string') return directMessage;
+  if (Array.isArray(directMessage)) return directMessage.join(', ');
+
+  const nestedError = data.error;
+  if (typeof nestedError === 'string') return nestedError;
+  if (nestedError && typeof nestedError === 'object') {
+    const nested = nestedError as Record<string, unknown>;
+    if (typeof nested.message === 'string') return nested.message;
+    if (Array.isArray(nested.message)) return nested.message.join(', ');
+    if (typeof nested.error === 'string') return nested.error;
+  }
+
+  return fallback;
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? 'GET',
@@ -166,10 +186,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     let message = 'A apărut o eroare la comunicarea cu serverul.';
     try {
       const errorData = await response.json();
-      message = errorData.message ?? errorData.error ?? message;
-      if (Array.isArray(message)) {
-        message = message.join(', ');
-      }
+      message = getApiErrorMessage(errorData, message);
     } catch {
       message = response.statusText || message;
     }
