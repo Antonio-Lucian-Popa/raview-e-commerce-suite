@@ -51,6 +51,7 @@ import {
 } from '@/types';
 
 type AdminTab = 'products' | 'categories' | 'brands' | 'promotions' | 'orders' | 'audit';
+type ProductCurrency = 'RON' | 'EUR';
 
 type ProductFormState = {
   id?: string;
@@ -58,6 +59,7 @@ type ProductFormState = {
   slug: string;
   sku: string;
   price: string;
+  priceCurrency: ProductCurrency;
   oldPrice: string;
   stock: string;
   categoryId: string;
@@ -114,6 +116,7 @@ const emptyProductForm: ProductFormState = {
   slug: '',
   sku: '',
   price: '',
+  priceCurrency: 'RON',
   oldPrice: '',
   stock: '',
   categoryId: '',
@@ -182,6 +185,41 @@ const adminQueryKeys = [
 const invalidateAdminData = (queryClient: QueryClient) =>
   Promise.all(adminQueryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 
+const normalizeProductCurrency = (currency: unknown): ProductCurrency =>
+  String(currency ?? 'RON').toUpperCase() === 'EUR' ? 'EUR' : 'RON';
+
+const parseProductSpecs = (specs: string): Record<string, unknown> | undefined => {
+  if (!specs.trim()) return undefined;
+
+  const parsed = JSON.parse(specs) as unknown;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new SyntaxError('Product specs must be a JSON object');
+  }
+
+  return parsed as Record<string, unknown>;
+};
+
+const buildProductSpecs = (form: ProductFormState) => {
+  const specs = parseProductSpecs(form.specs) ?? {};
+
+  if (form.priceCurrency === 'EUR') {
+    return {
+      ...specs,
+      currency: 'EUR',
+      priceIncludesVat:
+        typeof specs.priceIncludesVat === 'boolean' ? specs.priceIncludesVat : false,
+    };
+  }
+
+  const { currency, ...ronSpecs } = specs;
+  return Object.keys(ronSpecs).length > 0 ? ronSpecs : undefined;
+};
+
+const getProductAdminPriceLabel = (product: Product) => {
+  const currency = normalizeProductCurrency(product.currency ?? product.specs?.currency);
+  return currency === 'EUR' ? `${product.price} EUR` : formatMoney(product.price);
+};
+
 const toProductPayload = (form: ProductFormState): CreateProductPayload => ({
   name: form.name,
   slug: form.slug,
@@ -192,7 +230,7 @@ const toProductPayload = (form: ProductFormState): CreateProductPayload => ({
   categoryId: form.categoryId,
   brandId: form.brandId,
   description: form.description,
-  specs: form.specs ? JSON.parse(form.specs) : undefined,
+  specs: buildProductSpecs(form),
   featured: form.featured,
   bestseller: form.bestseller,
   isNew: form.isNew,
@@ -860,6 +898,7 @@ export default function AdminPage() {
         slug: product.slug,
         sku: product.sku,
         price: String(product.price),
+        priceCurrency: normalizeProductCurrency(product.currency ?? product.specs?.currency),
         oldPrice: product.oldPrice ? String(product.oldPrice) : '',
         stock: String(product.stock),
         categoryId: product.categoryId,
@@ -1140,7 +1179,7 @@ export default function AdminPage() {
                         {product.featured && <StatusPill>recomandat</StatusPill>}
                         {!product.active && <StatusPill variant="destructive">inactiv</StatusPill>}
                       </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{product.brand?.name} · {product.category?.name} · {product.price} lei · stoc {product.stock}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{product.brand?.name} · {product.category?.name} · {getProductAdminPriceLabel(product)} · stoc {product.stock}</p>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
                       <Button variant="outline" size="sm" onClick={() => editProduct(product)}>Editează</Button>
@@ -1592,8 +1631,18 @@ export default function AdminPage() {
                     <div><Label>Cod produs</Label><Input value={productForm.sku} onChange={(e) => setProductForm({ ...productForm, sku: e.target.value })} className="mt-1.5" /></div>
                   </div>
                   <div><Label>Descriere</Label><Textarea value={productForm.description} onChange={(e) => setProductForm({ ...productForm, description: e.target.value })} className="mt-1.5 min-h-28" /></div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div><Label>Preț (lei)</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="mt-1.5" /></div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="col-span-2 sm:col-span-1"><Label>{productForm.priceCurrency === 'EUR' ? 'Preț (EUR)' : 'Preț (lei)'}</Label><Input type="number" value={productForm.price} onChange={(e) => setProductForm({ ...productForm, price: e.target.value })} className="mt-1.5" /></div>
+                    <div className="col-span-2 sm:col-span-1">
+                      <Label>Monedă</Label>
+                      <Select value={productForm.priceCurrency} onValueChange={(v) => setProductForm({ ...productForm, priceCurrency: normalizeProductCurrency(v) })}>
+                        <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="RON">RON</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div><Label>Preț vechi</Label><Input type="number" value={productForm.oldPrice} onChange={(e) => setProductForm({ ...productForm, oldPrice: e.target.value })} className="mt-1.5" /></div>
                     <div><Label>Stoc</Label><Input type="number" value={productForm.stock} onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })} className="mt-1.5" /></div>
                   </div>
