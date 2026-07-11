@@ -277,7 +277,8 @@ export interface CreateProductPayload {
   categoryId: string;
   brandId: string;
   description?: string;
-  specs?: Record<string, unknown>;
+  // `null` explicitly clears stored specs on update; `undefined` leaves them untouched.
+  specs?: Record<string, unknown> | null;
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords?: string;
