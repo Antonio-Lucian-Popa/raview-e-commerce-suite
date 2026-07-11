@@ -212,7 +212,10 @@ const buildProductSpecs = (form: ProductFormState) => {
   }
 
   const { currency, ...ronSpecs } = specs;
-  return Object.keys(ronSpecs).length > 0 ? ronSpecs : undefined;
+  // Return `null` (not `undefined`) when nothing is left so the update request
+  // explicitly clears the stored specs and drops the old `currency: 'EUR'` key.
+  // Sending `undefined` would omit `specs` entirely and leave the product on EUR.
+  return Object.keys(ronSpecs).length > 0 ? ronSpecs : null;
 };
 
 const getProductAdminPriceLabel = (product: Product) => {
