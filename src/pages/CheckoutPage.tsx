@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCart } from '@/hooks/useCart';
 import { CreditCard, Lock, Truck } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
 
@@ -33,6 +34,7 @@ type FormData = z.infer<typeof schema>;
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
   const shipping = subtotal >= 500 ? 0 : 25;
   const total = subtotal + shipping;
@@ -42,6 +44,15 @@ export default function CheckoutPage() {
     defaultValues: { paymentMethod: 'card' },
   });
   const paymentMethod = watch('paymentMethod');
+
+  useEffect(() => {
+    if (searchParams.get('payment') === 'cancelled') {
+      toast.error('Plata a fost anulată. Coșul tău a fost păstrat, poți încerca din nou.');
+      searchParams.delete('payment');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onSubmit = async (data: FormData) => {
     setProcessing(true);
@@ -64,13 +75,17 @@ export default function CheckoutPage() {
           throw new Error('Stripe nu a returnat URL-ul de checkout.');
         }
 
-        clearCart();
+        // Cart is cleared on OrderSuccessPage, not here — if the customer
+        // cancels/fails the Stripe payment they land back on /checkout and
+        // must still have their items to retry.
         window.location.assign(checkoutSession.checkoutUrl);
         return;
       }
 
       clearCart();
       navigate(`/order-success?orderId=${order.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'A apărut o eroare la plasarea comenzii. Încearcă din nou.');
     } finally {
       setProcessing(false);
     }

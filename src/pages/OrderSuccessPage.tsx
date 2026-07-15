@@ -1,11 +1,21 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCart } from '@/hooks/useCart';
 
 export default function OrderSuccessPage() {
   const [searchParams] = useSearchParams();
   const orderId = searchParams.get('orderId');
   const orderLabel = orderId ? `#${orderId.slice(-8).toUpperCase()}` : null;
+  const { clearCart } = useCart();
+
+  // Cart is cleared here (order confirmed) rather than before the Stripe
+  // redirect, so a cancelled/failed payment leaves items intact on /checkout.
+  useEffect(() => {
+    clearCart();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="container-page py-20">
