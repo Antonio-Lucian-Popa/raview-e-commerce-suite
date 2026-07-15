@@ -6,7 +6,15 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
 import { getCategoryIcon } from '@/lib/category-icons';
-import heroImage from '@/assets/hero-showroom-bright.jpg';
+
+const heroImage = '/showroom/image1.jpeg';
+const showroomImages = [
+  { src: '/showroom/image2.jpeg', alt: 'Showroom Ravlux cu corpuri de iluminat decorative' },
+  { src: '/showroom/image3.jpeg', alt: 'Showroom Ravlux cu corpuri de iluminat moderne' },
+  { src: '/showroom/image4.jpeg', alt: 'Zonă de expunere cu lampadar circular Ravlux' },
+  { src: '/showroom/image5.jpeg', alt: 'Perspectivă showroom Ravlux cu lustre și aplice' },
+  { src: '/showroom/image6.jpeg', alt: 'Showroom Ravlux cu iluminat ambiental și decorativ' },
+];
 
 const benefits = [
   { icon: Truck, title: 'Livrare Rapidă', desc: 'Livrare gratuită peste 500 lei' },
@@ -40,8 +48,15 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative h-[85vh] min-h-[600px] flex items-center overflow-hidden">
         <div className="absolute inset-0">
-          <img src={heroImage} alt="Ravlux showroom luminos" className="w-full h-full object-cover" width={1672} height={941} />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/55 to-background/5" />
+          <img
+            src={heroImage}
+            alt="Showroom Ravlux luminos"
+            className="h-full w-full object-cover object-[58%_center]"
+            width={1600}
+            height={1200}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/62 to-background/10" />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-background/45 to-transparent" />
         </div>
         <div className="relative container-page">
           <div className="max-w-xl space-y-6 animate-fade-in">
@@ -225,19 +240,20 @@ export default function HomePage() {
       )}
 
       {/* Showroom CTA */}
-      <section className="section-padding">
+      <section className="bg-secondary py-16 md:py-24">
         <div className="container-page">
-          <div className="bg-secondary rounded-2xl p-8 md:p-12 flex flex-col md:flex-row items-center gap-8">
-            <div className="flex-1">
-              <h2 className="text-3xl font-display font-bold mb-4">Te așteptăm în Showroom</h2>
-              <p className="text-muted-foreground mb-6">
+          <div className="grid gap-10 lg:grid-cols-[0.78fr_1.22fr] lg:items-center">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.26em] text-accent">Showroom Ravlux</span>
+              <h2 className="mt-3 text-3xl font-display font-bold md:text-4xl">Te așteptăm în showroom</h2>
+              <p className="mt-4 max-w-xl text-muted-foreground">
                 Vizitează-ne și descoperă cele mai potrivite soluții de iluminat. Consultanții noștri sunt pregătiți să te ajute.
               </p>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+              <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4 text-accent" />
-                Bacău, Str. Gheorghe Donici Nr.2
+                <span>Bacău, Str. Gheorghe Donici Nr.2</span>
               </div>
-              <div className="flex gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 <Button className="bg-accent text-accent-foreground hover:bg-gold-dark" asChild>
                   <Link to="/contact">Contactează-ne</Link>
                 </Button>
@@ -246,8 +262,24 @@ export default function HomePage() {
                 </Button>
               </div>
             </div>
-            <div className="w-full md:w-80 h-60 rounded-xl overflow-hidden">
-              <img src={heroImage} alt="Showroom Ravlux" loading="lazy" className="w-full h-full object-cover" />
+
+            <div className="grid grid-cols-2 auto-rows-[128px] gap-3 sm:grid-cols-4 sm:auto-rows-[180px] lg:auto-rows-[220px]">
+              {showroomImages.map((image, index) => (
+                <figure
+                  key={image.src}
+                  className={[
+                    'overflow-hidden rounded-lg bg-background shadow-sm',
+                    index === 0 ? 'col-span-2 row-span-2' : '',
+                  ].join(' ')}
+                >
+                  <img
+                    src={image.src}
+                    alt={image.alt}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
+                  />
+                </figure>
+              ))}
             </div>
           </div>
         </div>
