@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/hooks/useCart';
 import { CreditCard, Lock, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -27,6 +28,9 @@ const schema = z.object({
   postalCode: z.string().min(4, 'Cod poștal invalid'),
   notes: z.string().optional(),
   paymentMethod: z.enum(['card', 'cash_on_delivery']),
+  acceptTerms: z.literal(true, {
+    errorMap: () => ({ message: 'Trebuie să accepți termenii și politica de retur.' }),
+  }),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -41,7 +45,7 @@ export default function CheckoutPage() {
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { paymentMethod: 'card' },
+    defaultValues: { paymentMethod: 'card', acceptTerms: false },
   });
   const paymentMethod = watch('paymentMethod');
 
@@ -209,8 +213,32 @@ export default function CheckoutPage() {
               <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{formatLei(total)}</span></div>
               <p className="text-xs text-muted-foreground">Prețurile includ TVA.</p>
             </div>
+            <div className="space-y-2">
+              <Label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+                <Checkbox
+                  className="mt-0.5"
+                  onCheckedChange={(checked) => setValue('acceptTerms', checked === true, { shouldValidate: true })}
+                />
+                <span>
+                  Am citit și accept{' '}
+                  <Link to="/terms" className="font-medium text-accent underline-offset-4 hover:underline">
+                    Termenii și condițiile
+                  </Link>
+                  ,{' '}
+                  <Link to="/returns" className="font-medium text-accent underline-offset-4 hover:underline">
+                    Politica de retur
+                  </Link>
+                  {' '}și{' '}
+                  <Link to="/privacy" className="font-medium text-accent underline-offset-4 hover:underline">
+                    Politica de confidențialitate
+                  </Link>
+                  .
+                </span>
+              </Label>
+              {errors.acceptTerms && <p className="text-xs text-destructive">{errors.acceptTerms.message}</p>}
+            </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" disabled={processing}>
-              {processing ? 'Se procesează...' : paymentMethod === 'card' ? `Plătește online · ${formatLei(total)}` : `Plasează comanda · ${formatLei(total)}`}
+              {processing ? 'Se procesează...' : paymentMethod === 'card' ? `Plătește online · ${formatLei(total)}` : `Comandă cu obligație de plată · ${formatLei(total)}`}
             </Button>
             <p className="text-xs text-center text-muted-foreground">Datele tale sunt protejate și securizate.</p>
           </div>

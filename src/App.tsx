@@ -24,10 +24,14 @@ import ContactPage from "./pages/ContactPage";
 import TermsPage from "./pages/TermsPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import CookiesPage from "./pages/CookiesPage";
+import ReturnsPage from "./pages/ReturnsPage";
+import DeliveryPage from "./pages/DeliveryPage";
+import LegalNoticePage from "./pages/LegalNoticePage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
+import { CookieConsent } from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +61,9 @@ const AppShell = () => {
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/cookies" element={<CookiesPage />} />
+          <Route path="/returns" element={<ReturnsPage />} />
+          <Route path="/delivery" element={<DeliveryPage />} />
+          <Route path="/legal" element={<LegalNoticePage />} />
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route element={<ProtectedAdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
@@ -65,6 +72,7 @@ const AppShell = () => {
         </Routes>
       </main>
       {!isAdminRoute && <Footer />}
+      {!isAdminRoute && <CookieConsent />}
     </div>
   );
 };

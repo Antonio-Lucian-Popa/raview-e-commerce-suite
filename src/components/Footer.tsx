@@ -13,9 +13,12 @@ const footerLinks = {
     { label: 'Despre noi', href: '/contact' },
     { label: 'Portofoliu', href: '/portfolio' },
     { label: 'Oferte', href: '/promotions' },
+    { label: 'Livrare', href: '/delivery' },
+    { label: 'Retur', href: '/returns' },
     { label: 'Termeni și condiții', href: '/terms' },
     { label: 'Politica de confidențialitate', href: '/privacy' },
     { label: 'Politica cookies', href: '/cookies' },
+    { label: 'Informații legale', href: '/legal' },
   ],
 };
 
@@ -75,8 +78,9 @@ export function Footer() {
 
         <div className="border-t border-primary-foreground/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-primary-foreground/40">© {new Date().getFullYear()} Ravlux Lighting. Toate drepturile rezervate.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
             <Link to="/terms" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Termeni</Link>
+            <Link to="/returns" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Retur</Link>
             <Link to="/privacy" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Confidențialitate</Link>
             <Link to="/cookies" className="text-xs text-primary-foreground/40 hover:text-accent transition-colors">Cookies</Link>
           </div>
