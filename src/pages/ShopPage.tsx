@@ -147,6 +147,21 @@ export default function ShopPage() {
     () => categories.find((category) => category.id === selectedCategoryId),
     [categories, selectedCategoryId],
   );
+  const parentCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
+  const selectedParentCategory = useMemo(() => {
+    if (!selectedCategory) return undefined;
+    if (!selectedCategory.parentId) return selectedCategory;
+
+    return categories.find((category) => category.id === selectedCategory.parentId) ?? selectedCategory.parent ?? undefined;
+  }, [categories, selectedCategory]);
+  const selectedSubcategories = useMemo(() => {
+    if (!selectedParentCategory || !selectedCategoryId) return [];
+
+    return categories.filter((category) => category.parentId === selectedParentCategory.id);
+  }, [categories, selectedCategoryId, selectedParentCategory]);
 
   const updatePage = useCallback((page: number) => {
     const next = new URLSearchParams(searchParams);
@@ -416,15 +431,35 @@ export default function ShopPage() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             <CategoryPill active={!selectedCategoryId} onSelect={() => updateCategory('')} />
-            {categories.map((category) => (
+            {parentCategories.map((category) => (
               <CategoryPill
                 key={category.id}
                 category={category}
-                active={selectedCategoryId === category.id}
+                active={selectedCategoryId === category.id || selectedCategory?.parentId === category.id}
                 onSelect={() => updateCategory(selectedCategoryId === category.id ? '' : category.id)}
               />
             ))}
           </div>
+          {selectedSubcategories.length > 0 && (
+            <div className="mt-5 border-t border-border/70 pt-5">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold">Subcategorii {selectedParentCategory ? `din ${selectedParentCategory.name}` : ''}</h3>
+                  <p className="text-xs text-muted-foreground">Alege o ramură mai exactă din categoria selectată.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {selectedSubcategories.map((category) => (
+                  <CategoryPill
+                    key={category.id}
+                    category={category}
+                    active={selectedCategoryId === category.id}
+                    onSelect={() => updateCategory(selectedCategoryId === category.id ? selectedParentCategory?.id ?? '' : category.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <div className="flex gap-8">
