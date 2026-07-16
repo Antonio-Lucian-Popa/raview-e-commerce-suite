@@ -12,6 +12,7 @@ import {
   Bell,
   ClipboardList,
   Eye,
+  EyeOff,
   LayoutGrid,
   Loader2,
   LogOut,
@@ -868,6 +869,14 @@ export default function AdminPage() {
   const deleteProductMutation = useMutation({ mutationFn: (id: string) => api.products.remove(token, id), onSuccess: async () => { toast.success('Produs șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deleteCategoryMutation = useMutation({ mutationFn: (id: string) => api.categories.remove(token, id), onSuccess: async () => { toast.success('Categorie ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deleteBrandMutation = useMutation({ mutationFn: (id: string) => api.brands.remove(token, id), onSuccess: async () => { toast.success('Brand șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
+  const toggleBrandVisibilityMutation = useMutation({
+    mutationFn: (brand: Brand) => api.brands.update(token, brand.id, { active: !brand.active }),
+    onSuccess: async (brand) => {
+      toast.success(brand.active ? 'Brand afișat pe site.' : 'Brand ascuns de pe site.');
+      await invalidateAdminData(queryClient);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const deletePromotionMutation = useMutation({ mutationFn: (id: string) => api.promotions.remove(token, id), onSuccess: async () => { toast.success('Promoție ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const refundOrderMutation = useMutation({
     mutationFn: (orderId: string) => api.payments.refundOrder(token, orderId),
@@ -1266,6 +1275,15 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div className="flex gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleBrandVisibilityMutation.mutate(brand)}
+                        disabled={toggleBrandVisibilityMutation.isPending}
+                      >
+                        {brand.active ? <EyeOff className="mr-1 h-3.5 w-3.5" /> : <Eye className="mr-1 h-3.5 w-3.5" />}
+                        {brand.active ? 'Ascunde' : 'Afișează'}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => editBrand(brand)}>Editează</Button>
                       <Button variant="destructive" size="sm" onClick={() => deleteBrandMutation.mutate(brand.id)}>Șterge</Button>
                     </div>
