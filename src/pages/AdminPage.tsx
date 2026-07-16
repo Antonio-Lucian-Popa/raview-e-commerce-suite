@@ -249,7 +249,7 @@ const toCategoryPayload = (form: CategoryFormState): CreateCategoryPayload => ({
   slug: form.slug,
   description: form.description || undefined,
   image: form.image || undefined,
-  parentId: form.parentId || undefined,
+  parentId: form.parentId || null,
   active: form.active,
 });
 

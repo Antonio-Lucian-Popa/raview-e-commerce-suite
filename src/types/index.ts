@@ -252,7 +252,7 @@ export interface CreateCategoryPayload {
   description?: string;
   image?: string;
   active?: boolean;
-  parentId?: string;
+  parentId?: string | null;
 }
 
 export interface CreateBrandPayload {
