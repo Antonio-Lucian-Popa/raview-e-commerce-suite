@@ -109,15 +109,17 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
             <p className="mt-1 text-[11px] text-muted-foreground">{hasPrice ? getVatLabel(product) : 'Contactează-ne pentru ofertă'}</p>
           </div>
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-8 w-8 shrink-0 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-colors"
-            aria-label={`Adaugă ${product.name} în coș`}
-            onClick={(e) => { e.preventDefault(); addItem(product); }}
-          >
-            <ShoppingBag className="h-4 w-4" />
-          </Button>
+          {hasPrice && (
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8 shrink-0 hover:bg-accent hover:text-accent-foreground hover:border-accent transition-colors"
+              aria-label={`Adaugă ${product.name} în coș`}
+              onClick={(e) => { e.preventDefault(); addItem(product); }}
+            >
+              <ShoppingBag className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </div>

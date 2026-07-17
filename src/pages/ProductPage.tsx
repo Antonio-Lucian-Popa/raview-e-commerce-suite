@@ -121,6 +121,7 @@ export default function ProductPage() {
   const priceWithVat = getProductPriceWithVat(product);
   const oldPriceWithVat = getProductOldPriceWithVat(product);
   const lineTotalWithVat = getProductLineTotalWithVat(product, quantity);
+  const hasPrice = priceWithVat > 0;
   const selectedProductImage = product.images[selectedImage];
   const selectedImageUrl = selectedProductImage?.url ?? '/placeholder.svg';
   const selectedImageAlt = selectedProductImage?.alt ?? product.name;
@@ -210,24 +211,30 @@ export default function ProductPage() {
           </div>
 
           <div className="flex min-w-0 flex-wrap items-baseline gap-3">
-            <span className="text-3xl font-bold">{formatLei(priceWithVat)}</span>
-            {oldPriceWithVat && (
+            <span className="text-3xl font-bold">{hasPrice ? formatLei(priceWithVat) : 'Preț la cerere'}</span>
+            {hasPrice && oldPriceWithVat && (
               <>
                 <span className="text-lg text-muted-foreground line-through">{formatLei(oldPriceWithVat)}</span>
                 <Badge variant="destructive">-{Math.round((1 - priceWithVat / oldPriceWithVat) * 100)}%</Badge>
               </>
             )}
           </div>
-          <div className="rounded-lg border border-border/70 bg-secondary/30 px-3 py-3 text-sm sm:px-4">
-            <div className="flex min-w-0 justify-between gap-4">
-              <span className="text-muted-foreground">Preț fără TVA</span>
-              <span className="shrink-0 font-medium">{formatLei(priceWithoutVat)}</span>
+          {hasPrice ? (
+            <div className="rounded-lg border border-border/70 bg-secondary/30 px-3 py-3 text-sm sm:px-4">
+              <div className="flex min-w-0 justify-between gap-4">
+                <span className="text-muted-foreground">Preț fără TVA</span>
+                <span className="shrink-0 font-medium">{formatLei(priceWithoutVat)}</span>
+              </div>
+              <div className="mt-1 flex min-w-0 justify-between gap-4 font-semibold">
+                <span>Total cu TVA 21%</span>
+                <span className="shrink-0">{formatLei(priceWithVat)}</span>
+              </div>
             </div>
-            <div className="mt-1 flex min-w-0 justify-between gap-4 font-semibold">
-              <span>Total cu TVA 21%</span>
-              <span className="shrink-0">{formatLei(priceWithVat)}</span>
+          ) : (
+            <div className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground">
+              Contactează-ne pentru ofertă și disponibilitate.
             </div>
-          </div>
+          )}
 
           <p className="text-muted-foreground">{product.seoDescription || product.description}</p>
 
@@ -244,36 +251,38 @@ export default function ProductPage() {
           </div>
 
           {/* Quantity + Add to cart */}
-          <div className="grid min-w-0 grid-cols-[7.25rem_minmax(0,1fr)] items-center gap-3 pt-2 sm:flex sm:gap-4">
-            <div className="flex h-11 items-center rounded-md border">
-              <button
-                className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={!canDecreaseQuantity}
-                aria-label="Scade cantitatea"
+          {hasPrice && (
+            <div className="grid min-w-0 grid-cols-[7.25rem_minmax(0,1fr)] items-center gap-3 pt-2 sm:flex sm:gap-4">
+              <div className="flex h-11 items-center rounded-md border">
+                <button
+                  className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={!canDecreaseQuantity}
+                  aria-label="Scade cantitatea"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="w-10 text-center font-medium">{quantity}</span>
+                <button
+                  className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setQuantity(Math.min(maxOrderQuantity, quantity + 1))}
+                  disabled={!canIncreaseQuantity}
+                  aria-label="Crește cantitatea"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              <Button
+                size="lg"
+                className="min-w-0 flex-1 bg-accent px-3 text-sm text-accent-foreground hover:bg-gold-dark sm:px-8"
+                onClick={() => addItem(product, quantity)}
               >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="w-10 text-center font-medium">{quantity}</span>
-              <button
-                className="flex h-full w-9 items-center justify-center transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
-                onClick={() => setQuantity(Math.min(maxOrderQuantity, quantity + 1))}
-                disabled={!canIncreaseQuantity}
-                aria-label="Crește cantitatea"
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+                <ShoppingBag className="mr-2 h-4 w-4" />
+                <span className="truncate">Adaugă în coș</span>
+                <span className="hidden sm:inline"> · {formatLei(lineTotalWithVat)}</span>
+              </Button>
             </div>
-            <Button
-              size="lg"
-              className="min-w-0 flex-1 bg-accent px-3 text-sm text-accent-foreground hover:bg-gold-dark sm:px-8"
-              onClick={() => addItem(product, quantity)}
-            >
-              <ShoppingBag className="mr-2 h-4 w-4" />
-              <span className="truncate">Adaugă în coș</span>
-              <span className="hidden sm:inline"> · {formatLei(lineTotalWithVat)}</span>
-            </Button>
-          </div>
+          )}
 
           {/* Trust badges */}
           <div className="grid grid-cols-3 gap-3 pt-4 border-t">
@@ -327,6 +336,7 @@ export default function ProductPage() {
       )}
 
       {/* Mobile sticky CTA */}
+      {hasPrice && (
       <div className="fixed bottom-0 left-0 right-0 z-40 flex min-w-0 items-center gap-2 border-t bg-background px-3 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] lg:hidden">
         <div className="min-w-0 shrink-0">
           <span className="block truncate font-bold leading-tight">{formatLei(priceWithVat)}</span>
@@ -341,6 +351,7 @@ export default function ProductPage() {
           <span className="truncate">Adaugă în coș</span>
         </Button>
       </div>
+      )}
     </div>
   );
 }
