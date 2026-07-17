@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Briefcase,
@@ -20,11 +20,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
+import { Category } from '@/types';
 
 type NavLink = {
   label: string;
   href: string;
-  children?: { label: string; href: string }[];
+  hasMegaMenu?: boolean;
 };
 
 const baseNavLinks: NavLink[] = [
@@ -56,14 +57,25 @@ export function Header() {
     queryKey: ['categories', 'header'],
     queryFn: () => api.categories.getAll(),
   });
+  const parentCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
+  const subcategoriesByParent = useMemo(() => {
+    return categories.reduce<Record<string, Category[]>>((groups, category) => {
+      if (!category.parentId) return groups;
+
+      return {
+        ...groups,
+        [category.parentId]: [...(groups[category.parentId] ?? []), category],
+      };
+    }, {});
+  }, [categories]);
   const navLinks: NavLink[] = baseNavLinks.map((link) =>
     link.href === '/shop'
       ? {
           ...link,
-          children: categories.map((category) => ({
-            label: category.name,
-            href: `/category/${category.slug}`,
-          })),
+          hasMegaMenu: parentCategories.length > 0,
         }
       : link,
   );
@@ -101,7 +113,7 @@ export function Header() {
               <div
                 key={link.href}
                 className="relative"
-                onMouseEnter={() => link.children && setMegaMenuOpen(link.label)}
+                onMouseEnter={() => link.hasMegaMenu && setMegaMenuOpen(link.label)}
                 onMouseLeave={() => setMegaMenuOpen(null)}
               >
                 <Link
@@ -111,26 +123,43 @@ export function Header() {
                   }`}
                 >
                   {link.label}
-                  {link.children && <ChevronDown className="h-3 w-3" />}
+                  {link.hasMegaMenu && <ChevronDown className="h-3 w-3" />}
                 </Link>
 
                 {/* Mega menu */}
-                {link.children && megaMenuOpen === link.label && (
+                {link.hasMegaMenu && megaMenuOpen === link.label && (
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50">
-                    <div className="bg-background border rounded-lg shadow-xl p-6 min-w-[500px] grid grid-cols-2 gap-3">
-                      {link.children.map(child => (
-                        <Link
-                          key={child.href}
-                          to={child.href}
-                          className="flex items-center gap-3 p-3 rounded-md hover:bg-secondary transition-colors"
-                          onClick={() => setMegaMenuOpen(null)}
-                        >
-                          <span className="text-sm font-medium">{child.label}</span>
-                        </Link>
+                    <div className="max-h-[70vh] min-w-[640px] overflow-y-auto rounded-lg border bg-background p-5 shadow-xl">
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                      {parentCategories.map((category) => (
+                        <div key={category.id} className="min-w-0">
+                          <Link
+                            to={`/category/${category.slug}`}
+                            className="block rounded-md px-2 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+                            onClick={() => setMegaMenuOpen(null)}
+                          >
+                            {category.name}
+                          </Link>
+                          {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                            <div className="mt-1 space-y-0.5 border-l border-border/70 pl-3">
+                              {subcategoriesByParent[category.id].map((subcategory) => (
+                                <Link
+                                  key={subcategory.id}
+                                  to={`/category/${subcategory.slug}`}
+                                  className="block rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                  onClick={() => setMegaMenuOpen(null)}
+                                >
+                                  {subcategory.name}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ))}
+                      </div>
                       <Link
                         to="/shop"
-                        className="col-span-2 flex items-center justify-center p-3 bg-secondary rounded-md hover:bg-secondary/80 transition-colors mt-2"
+                        className="mt-5 flex items-center justify-center rounded-md bg-secondary p-3 transition-colors hover:bg-secondary/80"
                         onClick={() => setMegaMenuOpen(null)}
                       >
                         <span className="text-sm font-semibold">Vezi toate produsele →</span>
@@ -270,7 +299,7 @@ export function Header() {
                 </nav>
               </div>
 
-              {categories.length > 0 && (
+              {parentCategories.length > 0 && (
                 <div>
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Categorii</p>
@@ -279,16 +308,31 @@ export function Header() {
                     </Link>
                   </div>
                   <div className="grid gap-2">
-                    {categories.slice(0, 6).map((category) => (
-                      <Link
-                        key={category.id}
-                        to={`/category/${category.slug}`}
-                        className="flex items-center justify-between rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm font-medium transition-colors hover:border-accent/50 hover:bg-accent/5"
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        {category.name}
-                        <span className="text-xs text-muted-foreground">{category.productCount ?? 0} produse</span>
-                      </Link>
+                    {parentCategories.slice(0, 6).map((category) => (
+                      <div key={category.id} className="rounded-2xl border border-border/70 bg-card p-3">
+                        <Link
+                          to={`/category/${category.slug}`}
+                          className="flex items-center justify-between text-sm font-semibold transition-colors hover:text-accent"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {category.name}
+                          <span className="text-xs font-medium text-muted-foreground">{category.productCount ?? 0} produse</span>
+                        </Link>
+                        {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                          <div className="mt-2 grid gap-1 border-l border-border/70 pl-3">
+                            {subcategoriesByParent[category.id].slice(0, 5).map((subcategory) => (
+                              <Link
+                                key={subcategory.id}
+                                to={`/category/${subcategory.slug}`}
+                                className="py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-accent"
+                                onClick={() => setMobileOpen(false)}
+                              >
+                                {subcategory.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
