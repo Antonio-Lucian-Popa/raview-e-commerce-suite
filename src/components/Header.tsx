@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Briefcase,
   ChevronDown,
+  ChevronRight,
   Gift,
   Grid3X3,
   Home,
@@ -51,6 +52,7 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [megaMenuOpen, setMegaMenuOpen] = useState<string | null>(null);
+  const [expandedCategoryIds, setExpandedCategoryIds] = useState<string[]>([]);
   const { totalItems, setIsOpen } = useCart();
   const location = useLocation();
   const { data: categories = [] } = useQuery({
@@ -79,6 +81,13 @@ export function Header() {
         }
       : link,
   );
+  const toggleCategoryExpanded = (categoryId: string) => {
+    setExpandedCategoryIds((current) =>
+      current.includes(categoryId)
+        ? current.filter((id) => id !== categoryId)
+        : [...current, categoryId],
+    );
+  };
 
   return (
     <>
@@ -133,14 +142,27 @@ export function Header() {
                       <div className="grid grid-cols-2 gap-x-8 gap-y-5">
                       {parentCategories.map((category) => (
                         <div key={category.id} className="min-w-0">
-                          <Link
-                            to={`/category/${category.slug}`}
-                            className="block rounded-md px-2 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
-                            onClick={() => setMegaMenuOpen(null)}
-                          >
-                            {category.name}
-                          </Link>
-                          {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Link
+                              to={`/category/${category.slug}`}
+                              className="block min-w-0 flex-1 rounded-md px-2 py-1.5 text-sm font-semibold text-foreground transition-colors hover:bg-secondary"
+                              onClick={() => setMegaMenuOpen(null)}
+                            >
+                              {category.name}
+                            </Link>
+                            {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                              <button
+                                type="button"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                onClick={() => toggleCategoryExpanded(category.id)}
+                                aria-label={`Arată subcategoriile pentru ${category.name}`}
+                                aria-expanded={expandedCategoryIds.includes(category.id)}
+                              >
+                                <ChevronRight className={`h-4 w-4 transition-transform ${expandedCategoryIds.includes(category.id) ? 'rotate-90' : ''}`} />
+                              </button>
+                            )}
+                          </div>
+                          {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && expandedCategoryIds.includes(category.id) && (
                             <div className="mt-1 space-y-0.5 border-l border-border/70 pl-3">
                               {subcategoriesByParent[category.id].map((subcategory) => (
                                 <Link
@@ -310,15 +332,28 @@ export function Header() {
                   <div className="grid gap-2">
                     {parentCategories.slice(0, 6).map((category) => (
                       <div key={category.id} className="rounded-2xl border border-border/70 bg-card p-3">
-                        <Link
-                          to={`/category/${category.slug}`}
-                          className="flex items-center justify-between text-sm font-semibold transition-colors hover:text-accent"
-                          onClick={() => setMobileOpen(false)}
-                        >
-                          {category.name}
-                          <span className="text-xs font-medium text-muted-foreground">{category.productCount ?? 0} produse</span>
-                        </Link>
-                        {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Link
+                            to={`/category/${category.slug}`}
+                            className="flex min-w-0 flex-1 items-center justify-between gap-3 text-sm font-semibold transition-colors hover:text-accent"
+                            onClick={() => setMobileOpen(false)}
+                          >
+                            <span className="min-w-0">{category.name}</span>
+                            <span className="shrink-0 text-xs font-medium text-muted-foreground">{category.productCount ?? 0} produse</span>
+                          </Link>
+                          {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && (
+                            <button
+                              type="button"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground"
+                              onClick={() => toggleCategoryExpanded(category.id)}
+                              aria-label={`Arată subcategoriile pentru ${category.name}`}
+                              aria-expanded={expandedCategoryIds.includes(category.id)}
+                            >
+                              <ChevronRight className={`h-4 w-4 transition-transform ${expandedCategoryIds.includes(category.id) ? 'rotate-90' : ''}`} />
+                            </button>
+                          )}
+                        </div>
+                        {(subcategoriesByParent[category.id]?.length ?? 0) > 0 && expandedCategoryIds.includes(category.id) && (
                           <div className="mt-2 grid gap-1 border-l border-border/70 pl-3">
                             {subcategoriesByParent[category.id].slice(0, 5).map((subcategory) => (
                               <Link
