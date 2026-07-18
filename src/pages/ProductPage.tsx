@@ -79,9 +79,6 @@ function formatSpecValue(value: unknown) {
 function getDisplaySpecs(product: Product) {
   const baseSpecs = [
     { label: 'Cod produs', value: product.specs?.productCode ?? product.sku },
-    { label: 'Brand', value: product.brand?.name },
-    { label: 'Categorie', value: product.category?.name },
-    { label: 'Disponibilitate', value: product.stock > 0 ? `În stoc (${product.stock} buc.)` : 'La comandă' },
   ];
 
   const extraSpecs = Object.entries(product.specs ?? {})
