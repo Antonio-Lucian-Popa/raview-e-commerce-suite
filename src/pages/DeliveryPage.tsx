@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/Breadcrumbs';
+import { FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_COST } from '@/lib/shipping';
 
 export default function DeliveryPage() {
   return (
@@ -23,8 +24,8 @@ export default function DeliveryPage() {
 
         <h2 className="text-lg font-semibold text-foreground">3. Costuri de livrare</h2>
         <p>
-          Livrarea este gratuită pentru comenzi peste 500 lei. Pentru comenzile sub acest prag, costul
-          standard de livrare este afișat în checkout înainte de plasarea comenzii.
+          Livrarea este gratuită pentru comenzi peste {FREE_SHIPPING_THRESHOLD} lei. Pentru comenzile
+          sub acest prag, costul standard de livrare este {STANDARD_SHIPPING_COST} lei.
         </p>
 
         <h2 className="text-lg font-semibold text-foreground">4. Verificarea coletului</h2>

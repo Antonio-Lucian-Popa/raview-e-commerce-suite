@@ -20,6 +20,7 @@ import {
   getProductPriceWithoutVat,
   getVatLabel,
 } from '@/lib/pricing';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
 import { Product } from '@/types';
 
 const hiddenSpecKeys = new Set([
@@ -324,7 +325,7 @@ export default function ProductPage() {
           </div>
         </TabsContent>
         <TabsContent value="delivery" className="mt-6 text-sm text-muted-foreground space-y-3">
-          <p><strong>Livrare:</strong> Livrare în 2-3 săptămâni. Gratuită pentru comenzi peste 500 lei.</p>
+          <p><strong>Livrare:</strong> Livrare în 2-3 săptămâni. Gratuită pentru comenzi peste {FREE_SHIPPING_THRESHOLD} lei.</p>
           <p><strong>Plată:</strong> Card bancar, transfer bancar, ramburs la livrare.</p>
           <p><strong>Retur:</strong> 30 de zile de la primirea produsului, în ambalajul original.</p>
         </TabsContent>

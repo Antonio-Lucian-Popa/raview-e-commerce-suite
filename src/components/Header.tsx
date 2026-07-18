@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
 import { api } from '@/lib/api';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
 import { Category } from '@/types';
 
 type NavLink = {
@@ -102,7 +103,7 @@ export function Header() {
               <MapPin className="h-3 w-3" /> Bacău, Str. Gheorghe Donici Nr.2
             </span>
           </div>
-          <span className="hidden sm:block">Livrare gratuită peste 500 lei</span>
+          <span className="hidden sm:block">Livrare gratuită peste {FREE_SHIPPING_THRESHOLD} lei</span>
         </div>
       </div>
 

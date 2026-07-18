@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
+import { getShippingCost } from '@/lib/shipping';
 
 const schema = z.object({
   firstName: z.string().min(2, 'Prenumele este obligatoriu'),
@@ -40,7 +41,7 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
-  const shipping = subtotal >= 500 ? 0 : 25;
+  const shipping = getShippingCost(subtotal);
   const total = subtotal + shipping;
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({

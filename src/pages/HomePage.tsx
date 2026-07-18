@@ -6,6 +6,7 @@ import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
 import { api } from '@/lib/api';
 import { getCategoryIcon } from '@/lib/category-icons';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
 
 const heroImage = '/showroom/image1.jpeg';
 const showroomImages = [
@@ -17,7 +18,7 @@ const showroomImages = [
 ];
 
 const benefits = [
-  { icon: Truck, title: 'Livrare Rapidă', desc: 'Livrare gratuită peste 500 lei' },
+  { icon: Truck, title: 'Livrare Rapidă', desc: `Livrare gratuită peste ${FREE_SHIPPING_THRESHOLD} lei` },
   { icon: Shield, title: 'Garanție', desc: 'Garanție de până la 5 ani' },
   { icon: Headphones, title: 'Consultanță', desc: 'Sfaturi de specialitate' },
   { icon: Award, title: 'Calitate Premium', desc: 'Branduri de încredere' },
@@ -103,6 +104,22 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* In Stock Products */}
+      <section className="section-padding bg-surface">
+        <div className="container-page">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-3xl font-display font-bold">Produse în stoc</h2>
+              <p className="text-muted-foreground mt-1">Corpuri de iluminat disponibile acum.</p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link to="/shop?inStock=true">Vezi toate <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </div>
+          {isLoading ? <ProductGridSkeleton /> : <ProductGrid products={inStockProducts} />}
+        </div>
+      </section>
+
       {/* Categories */}
       <section className="section-padding">
         <div className="container-page">
@@ -127,22 +144,6 @@ export default function HomePage() {
               );
             })}
           </div>
-        </div>
-      </section>
-
-      {/* In Stock Products */}
-      <section className="section-padding bg-surface">
-        <div className="container-page">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-3xl font-display font-bold">Produse în stoc</h2>
-              <p className="text-muted-foreground mt-1">Corpuri de iluminat disponibile acum.</p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link to="/shop?inStock=true">Vezi toate <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
-          </div>
-          {isLoading ? <ProductGridSkeleton /> : <ProductGrid products={inStockProducts} />}
         </div>
       </section>
 

@@ -8,11 +8,12 @@ import { useCart } from '@/hooks/useCart';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
+import { FREE_SHIPPING_THRESHOLD, getShippingCost } from '@/lib/shipping';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, subtotal } = useCart();
   const [coupon, setCoupon] = useState('');
-  const shipping = subtotal >= 500 ? 0 : 25;
+  const shipping = getShippingCost(subtotal);
   const total = subtotal + shipping;
 
   if (items.length === 0) {
@@ -72,7 +73,7 @@ export default function CartPage() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal cu TVA</span><span>{formatLei(subtotal)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : formatLei(shipping)}</span></div>
-              {shipping > 0 && <p className="text-xs text-accent">Mai adaugă {formatLei(500 - subtotal)} pentru livrare gratuită!</p>}
+              {shipping > 0 && <p className="text-xs text-accent">Mai adaugă {formatLei(FREE_SHIPPING_THRESHOLD - subtotal)} pentru livrare gratuită!</p>}
               <p className="text-xs text-muted-foreground">Prețurile includ TVA 21%.</p>
             </div>
             <div className="flex gap-2">
