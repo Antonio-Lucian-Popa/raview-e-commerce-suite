@@ -7,6 +7,7 @@ import {
   CheckoutFormData,
   CreateBrandPayload,
   CreateCategoryPayload,
+  CreatePortfolioProjectPayload,
   CreateProductPayload,
   CreatePromotionPayload,
   FilterState,
@@ -286,7 +287,7 @@ export const api = {
     },
   },
   uploads: {
-    async uploadImage(token: string, file: File, folder: 'products' | 'categories' | 'brands'): Promise<string> {
+    async uploadImage(token: string, file: File, folder: 'products' | 'categories' | 'brands' | 'portfolio'): Promise<string> {
       const response = await uploadRequest<UploadResponse>(`/uploads/image${createQueryString({ folder })}`, file, token);
       return response.url;
     },
@@ -521,9 +522,24 @@ export const api = {
       const response = await request<any[]>('/portfolio');
       return response.map(normalizePortfolio);
     },
+    async adminGetAll(token: string): Promise<PortfolioProject[]> {
+      const response = await request<any[]>('/portfolio/admin/all', { token });
+      return response.map(normalizePortfolio);
+    },
     async getBySlug(slug: string): Promise<PortfolioProject | undefined> {
       const items = await this.getAll();
       return items.find((item) => item.slug === slug);
+    },
+    async create(token: string, payload: CreatePortfolioProjectPayload): Promise<PortfolioProject> {
+      const response = await request<any>('/portfolio', { method: 'POST', body: payload, token });
+      return normalizePortfolio(response);
+    },
+    async update(token: string, id: string, payload: Partial<CreatePortfolioProjectPayload>): Promise<PortfolioProject> {
+      const response = await request<any>(`/portfolio/${id}`, { method: 'PATCH', body: payload, token });
+      return normalizePortfolio(response);
+    },
+    async remove(token: string, id: string) {
+      return request(`/portfolio/${id}`, { method: 'DELETE', token });
     },
   },
   payments: {

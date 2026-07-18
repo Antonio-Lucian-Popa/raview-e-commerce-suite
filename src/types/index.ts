@@ -297,3 +297,14 @@ export interface CreatePromotionPayload {
   productId?: string;
   categoryId?: string;
 }
+
+export interface CreatePortfolioProjectPayload {
+  title: string;
+  slug: string;
+  description?: string;
+  coverImage?: string;
+  gallery?: string[];
+  clientName?: string;
+  completedAt?: string;
+  active?: boolean;
+}

@@ -44,14 +44,16 @@ import {
   AuditLog,
   CreateBrandPayload,
   CreateCategoryPayload,
+  CreatePortfolioProjectPayload,
   CreateProductPayload,
   CreatePromotionPayload,
   Order,
+  PortfolioProject,
   Product,
   Promotion,
 } from '@/types';
 
-type AdminTab = 'products' | 'categories' | 'brands' | 'promotions' | 'orders' | 'audit';
+type AdminTab = 'products' | 'categories' | 'brands' | 'promotions' | 'portfolio' | 'orders' | 'audit';
 type ProductCurrency = 'RON' | 'EUR';
 
 type ProductFormState = {
@@ -118,6 +120,16 @@ type PromotionFormState = {
   active: boolean;
 };
 
+type PortfolioFormState = {
+  id?: string;
+  title: string;
+  slug: string;
+  description: string;
+  clientName: string;
+  completedAt: string;
+  active: boolean;
+};
+
 const emptyProductForm: ProductFormState = {
   name: '',
   slug: '',
@@ -176,11 +188,22 @@ const emptyPromotionForm: PromotionFormState = {
   active: true,
 };
 
+const emptyPortfolioForm: PortfolioFormState = {
+  title: '',
+  slug: '',
+  description: '',
+  clientName: '',
+  completedAt: '',
+  active: true,
+};
+
 const adminQueryKeys = [
   ['admin', 'products'],
   ['admin', 'categories'],
   ['admin', 'brands'],
   ['admin', 'promotions'],
+  ['admin', 'portfolio'],
+  ['portfolio'],
   ['admin', 'orders'],
   ['products', 'featured'],
   ['categories', 'home'],
@@ -326,6 +349,20 @@ const toPromotionPayload = (form: PromotionFormState): CreatePromotionPayload =>
   scope: form.scope,
   productId: form.scope === 'product' ? form.productId : undefined,
   categoryId: form.scope === 'category' ? form.categoryId : undefined,
+  active: form.active,
+});
+
+const toPortfolioPayload = (
+  form: PortfolioFormState,
+  imageUrls: string[],
+): CreatePortfolioProjectPayload => ({
+  title: form.title,
+  slug: form.slug,
+  description: form.description || undefined,
+  clientName: form.clientName || undefined,
+  completedAt: form.completedAt ? new Date(form.completedAt).toISOString() : undefined,
+  coverImage: imageUrls[0] || undefined,
+  gallery: imageUrls,
   active: form.active,
 });
 
@@ -498,6 +535,7 @@ const sidebarItems: { key: AdminTab; label: string; icon: typeof Package2 }[] = 
   { key: 'categories', label: 'Categorii', icon: LayoutGrid },
   { key: 'brands', label: 'Branduri', icon: Tags },
   { key: 'promotions', label: 'Promoții', icon: Megaphone },
+  { key: 'portfolio', label: 'Portofoliu', icon: Sparkles },
   { key: 'orders', label: 'Comenzi', icon: ShoppingCart },
   { key: 'audit', label: 'Istoric acțiuni', icon: ClipboardList },
 ];
@@ -518,10 +556,13 @@ export default function AdminPage() {
   const [brandLogoFile, setBrandLogoFile] = useState<File | null>(null);
   const [brandLogoPreview, setBrandLogoPreview] = useState('');
   const [promotionForm, setPromotionForm] = useState<PromotionFormState>(emptyPromotionForm);
+  const [portfolioForm, setPortfolioForm] = useState<PortfolioFormState>(emptyPortfolioForm);
+  const [portfolioImageDrafts, setPortfolioImageDrafts] = useState<ProductImageDraft[]>([emptyProductImageDraft()]);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [brandDialogOpen, setBrandDialogOpen] = useState(false);
   const [promotionDialogOpen, setPromotionDialogOpen] = useState(false);
+  const [portfolioDialogOpen, setPortfolioDialogOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
@@ -529,6 +570,7 @@ export default function AdminPage() {
   const [categorySearch, setCategorySearch] = useState('');
   const [brandSearch, setBrandSearch] = useState('');
   const [promotionSearch, setPromotionSearch] = useState('');
+  const [portfolioSearch, setPortfolioSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [auditSearch, setAuditSearch] = useState('');
   const [productsPage, setProductsPage] = useState(1);
@@ -542,6 +584,7 @@ export default function AdminPage() {
   const deferredCategorySearch = useDeferredValue(categorySearch);
   const deferredBrandSearch = useDeferredValue(brandSearch);
   const deferredPromotionSearch = useDeferredValue(promotionSearch);
+  const deferredPortfolioSearch = useDeferredValue(portfolioSearch);
   const deferredOrderSearch = useDeferredValue(orderSearch);
   const deferredAuditSearch = useDeferredValue(auditSearch);
 
@@ -551,6 +594,7 @@ export default function AdminPage() {
   const needsCategories = activeTab === 'categories' || categoryDialogOpen || productDialogOpen || promotionDialogOpen;
   const needsBrands = activeTab === 'brands' || brandDialogOpen || productDialogOpen;
   const needsPromotions = activeTab === 'promotions' || promotionDialogOpen;
+  const needsPortfolio = activeTab === 'portfolio' || portfolioDialogOpen;
   const needsOrders = activeTab === 'orders';
   const needsAudit = activeTab === 'audit';
 
@@ -587,6 +631,11 @@ export default function AdminPage() {
     queryFn: () => api.promotions.adminGetAll(token, { page: promotionsPage, limit: pageSize, search: deferredPromotionSearch || undefined }),
     enabled: Boolean(token) && needsPromotions,
     placeholderData: (previousData) => previousData,
+  });
+  const { data: portfolioProjects = [], isLoading: portfolioLoading } = useQuery({
+    queryKey: ['admin', 'portfolio'],
+    queryFn: () => api.portfolio.adminGetAll(token),
+    enabled: Boolean(token) && needsPortfolio,
   });
   const { data: ordersData, isLoading: ordersLoading } = useQuery({
     queryKey: ['admin', 'orders', ordersPage, deferredOrderSearch],
@@ -653,6 +702,11 @@ export default function AdminPage() {
     setPromotionForm(emptyPromotionForm);
     setPromotionDialogOpen(true);
   };
+  const openNewPortfolioProject = () => {
+    setPortfolioForm(emptyPortfolioForm);
+    setPortfolioImageDrafts([emptyProductImageDraft()]);
+    setPortfolioDialogOpen(true);
+  };
 
   const validateProductForm = () => {
     if (!productForm.name.trim()) return 'Numele produsului este obligatoriu.';
@@ -671,6 +725,15 @@ export default function AdminPage() {
   const filteredCategories = useMemo(() => categories, [categories]);
   const filteredBrands = useMemo(() => brands, [brands]);
   const filteredPromotions = useMemo(() => promotions, [promotions]);
+  const filteredPortfolioProjects = useMemo(() => {
+    const search = deferredPortfolioSearch.trim().toLowerCase();
+    if (!search) return portfolioProjects;
+    return portfolioProjects.filter((project) =>
+      [project.title, project.clientName, project.description]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(search)),
+    );
+  }, [portfolioProjects, deferredPortfolioSearch]);
   const filteredOrders = useMemo(() => orders, [orders]);
 
   const categoriesTotalPages = Math.max(1, categoriesData?.meta.totalPages ?? 1);
@@ -921,6 +984,31 @@ export default function AdminPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const portfolioMutation = useMutation({
+    mutationFn: async () => {
+      if (!portfolioForm.title.trim()) throw new Error('Titlul proiectului este obligatoriu.');
+      if (!portfolioForm.slug.trim()) throw new Error('Numele din link este obligatoriu.');
+
+      const imageUrls = await Promise.all(
+        portfolioImageDrafts.map(async (draft) => (draft.file ? api.uploads.uploadImage(token, draft.file, 'portfolio') : draft.url.trim())),
+      );
+      const finalImages = imageUrls.filter(Boolean);
+      const payload = toPortfolioPayload(portfolioForm, finalImages);
+
+      return portfolioForm.id
+        ? api.portfolio.update(token, portfolioForm.id, payload)
+        : api.portfolio.create(token, payload);
+    },
+    onSuccess: async () => {
+      toast.success(portfolioForm.id ? 'Proiect actualizat.' : 'Proiect creat.');
+      setPortfolioForm(emptyPortfolioForm);
+      setPortfolioImageDrafts([emptyProductImageDraft()]);
+      setPortfolioDialogOpen(false);
+      await invalidateAdminData(queryClient);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const deleteProductMutation = useMutation({ mutationFn: (id: string) => api.products.remove(token, id), onSuccess: async () => { toast.success('Produs șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deleteCategoryMutation = useMutation({ mutationFn: (id: string) => api.categories.remove(token, id), onSuccess: async () => { toast.success('Categorie ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const deleteBrandMutation = useMutation({ mutationFn: (id: string) => api.brands.remove(token, id), onSuccess: async () => { toast.success('Brand șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
@@ -933,6 +1021,7 @@ export default function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
   const deletePromotionMutation = useMutation({ mutationFn: (id: string) => api.promotions.remove(token, id), onSuccess: async () => { toast.success('Promoție ștearsă.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
+  const deletePortfolioMutation = useMutation({ mutationFn: (id: string) => api.portfolio.remove(token, id), onSuccess: async () => { toast.success('Proiect șters.'); await invalidateAdminData(queryClient); }, onError: (e: Error) => toast.error(e.message) });
   const refundOrderMutation = useMutation({
     mutationFn: (orderId: string) => api.payments.refundOrder(token, orderId),
     onSuccess: async (order) => {
@@ -1021,6 +1110,28 @@ export default function AdminPage() {
     });
   };
 
+  const editPortfolioProject = (project: PortfolioProject) => {
+    startTransition(() => {
+      const images = project.gallery?.length ? project.gallery : project.coverImage ? [project.coverImage] : [];
+      setActiveTab('portfolio');
+      setPortfolioForm({
+        id: project.id,
+        title: project.title,
+        slug: project.slug,
+        description: project.description ?? '',
+        clientName: project.clientName ?? '',
+        completedAt: project.completedAt ? project.completedAt.slice(0, 10) : '',
+        active: project.active,
+      });
+      setPortfolioImageDrafts(
+        images.length > 0
+          ? images.map((url) => ({ url, file: null, previewUrl: url }))
+          : [emptyProductImageDraft()],
+      );
+      setPortfolioDialogOpen(true);
+    });
+  };
+
   const submit = async (event: FormEvent, action: () => Promise<unknown>) => {
     event.preventDefault();
     try { await action(); } catch (error) { if (error instanceof SyntaxError) toast.error('Specificațiile nu sunt valide.'); }
@@ -1075,6 +1186,28 @@ export default function AdminPage() {
     if (!file) return;
     const previewUrl = URL.createObjectURL(file);
     setProductImageDrafts((current) => {
+      const next = [...current];
+      next[index] = {
+        url: next[index]?.url ?? '',
+        file,
+        previewUrl,
+      };
+      return next;
+    });
+  };
+  const addPortfolioImage = () => {
+    setPortfolioImageDrafts((current) => [...current, emptyProductImageDraft()]);
+  };
+  const removePortfolioImage = (index: number) => {
+    setPortfolioImageDrafts((current) => {
+      const next = current.filter((_, i) => i !== index);
+      return next.length > 0 ? next : [emptyProductImageDraft()];
+    });
+  };
+  const updatePortfolioImageFile = (index: number, file?: File | null) => {
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setPortfolioImageDrafts((current) => {
       const next = [...current];
       next[index] = {
         url: next[index]?.url ?? '',
@@ -1423,6 +1556,58 @@ export default function AdminPage() {
               )}
             </Card>
           </>
+        )}
+
+        {/* ═══════ PORTFOLIO ═══════ */}
+        {activeTab === 'portfolio' && (
+          <Card title="Proiecte portofoliu" actions={<Button variant="outline" size="sm" onClick={openNewPortfolioProject}>Proiect nou</Button>}>
+            <SearchToolbar
+              placeholder="Caută proiect…"
+              value={portfolioSearch}
+              onChange={setPortfolioSearch}
+              countLabel={`${portfolioProjects.length} proiecte`}
+            />
+            {portfolioLoading ? (
+              <div className="mt-4">
+                <LoadingBlock message="Se încarcă portofoliul..." />
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {filteredPortfolioProjects.map((project) => (
+                  <article key={project.id} className="overflow-hidden rounded-lg border border-border/70 bg-secondary/15">
+                    <div className="aspect-[16/9] bg-secondary">
+                      <img
+                        src={project.coverImage || project.gallery?.[0] || '/placeholder.svg'}
+                        alt={project.title}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <p className="truncate font-medium text-sm">{project.title}</p>
+                            {!project.active && <StatusPill variant="destructive">inactiv</StatusPill>}
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {project.clientName || 'Proiect Ravlux'}
+                            {project.completedAt ? ` · ${formatDate(project.completedAt)}` : ''}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">{project.gallery?.length ?? 0} imagini</p>
+                        </div>
+                        <Sparkles className="h-4 w-4 shrink-0 text-accent" />
+                      </div>
+                      <div className="mt-3 flex gap-1.5">
+                        <Button variant="outline" size="sm" className="flex-1" onClick={() => editPortfolioProject(project)}>Editează</Button>
+                        <Button variant="destructive" size="sm" className="flex-1" onClick={() => deletePortfolioMutation.mutate(project.id)}>Șterge</Button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+                {filteredPortfolioProjects.length === 0 && <EmptyBlock message="Nu există proiecte în portofoliu." />}
+              </div>
+            )}
+          </Card>
         )}
 
         {/* ═══════ ORDERS ═══════ */}
@@ -1850,6 +2035,92 @@ export default function AdminPage() {
               <div className="flex justify-end">
                 <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={productMutation.isPending}>
                   {productMutation.isPending ? 'Se salvează...' : productForm.id ? 'Actualizează' : 'Creează produsul'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={portfolioDialogOpen} onOpenChange={setPortfolioDialogOpen}>
+          <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{portfolioForm.id ? 'Editează proiect' : 'Proiect nou'}</DialogTitle>
+              <DialogDescription>Gestionează proiectele și imaginile afișate în pagina de portofoliu.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => submit(e, () => portfolioMutation.mutateAsync())} className="space-y-5">
+              <div className="grid gap-5 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <div>
+                    <Label>Titlu proiect</Label>
+                    <Input value={portfolioForm.title} onChange={(e) => setPortfolioForm({ ...portfolioForm, title: e.target.value })} className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label>Nume în link</Label>
+                    <Input value={portfolioForm.slug} onChange={(e) => setPortfolioForm({ ...portfolioForm, slug: e.target.value })} className="mt-1.5" />
+                  </div>
+                  <div>
+                    <Label>Descriere</Label>
+                    <Textarea value={portfolioForm.description} onChange={(e) => setPortfolioForm({ ...portfolioForm, description: e.target.value })} className="mt-1.5 min-h-28" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Client</Label>
+                      <Input value={portfolioForm.clientName} onChange={(e) => setPortfolioForm({ ...portfolioForm, clientName: e.target.value })} className="mt-1.5" />
+                    </div>
+                    <div>
+                      <Label>Data finalizării</Label>
+                      <Input type="date" value={portfolioForm.completedAt} onChange={(e) => setPortfolioForm({ ...portfolioForm, completedAt: e.target.value })} className="mt-1.5" />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox checked={portfolioForm.active} onCheckedChange={(c) => setPortfolioForm({ ...portfolioForm, active: Boolean(c) })} />
+                    Activ pe site
+                  </label>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <Label>Imagini portofoliu</Label>
+                    <Button type="button" variant="ghost" size="sm" onClick={addPortfolioImage} className="gap-1 text-xs">
+                      <Plus className="h-3 w-3" /> Adaugă imagine
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Prima imagine din listă este folosită ca imagine de copertă.</p>
+                  <div className="mt-3 space-y-2">
+                    {portfolioImageDrafts.map((draft, index) => (
+                      <div key={index} className="rounded-lg border border-border/70 bg-background p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <Label className="text-xs text-muted-foreground">{index === 0 ? 'Copertă' : `Imagine ${index + 1}`}</Label>
+                            <Input type="file" accept="image/*" onChange={(e) => updatePortfolioImageFile(index, e.target.files?.[0])} />
+                            <p className="text-xs text-muted-foreground">
+                              {draft.file
+                                ? 'Fișier selectat. Se va încărca la salvare.'
+                                : draft.url
+                                  ? 'Imagine deja salvată pentru acest proiect.'
+                                  : 'Selectează o imagine din calculator.'}
+                            </p>
+                          </div>
+                          {portfolioImageDrafts.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-destructive" onClick={() => removePortfolioImage(index)}>
+                              <X className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                        {draft.previewUrl && (
+                          <div className="mt-3 overflow-hidden rounded-lg border border-border/70">
+                            <img src={draft.previewUrl} alt="" className="h-32 w-full object-cover" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={portfolioMutation.isPending}>
+                  {portfolioMutation.isPending ? 'Se salvează...' : portfolioForm.id ? 'Actualizează' : 'Creează proiectul'}
                 </Button>
               </div>
             </form>
