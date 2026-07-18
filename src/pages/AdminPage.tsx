@@ -67,11 +67,17 @@ type ProductFormState = {
   brandId: string;
   description: string;
   imageUrls: string[];
-  specs: string;
+  specs: ProductSpecDraft[];
+  hiddenSpecs: Record<string, unknown>;
   featured: boolean;
   bestseller: boolean;
   isNew: boolean;
   active: boolean;
+};
+
+type ProductSpecDraft = {
+  title: string;
+  value: string;
 };
 
 type ProductImageDraft = {
@@ -124,7 +130,8 @@ const emptyProductForm: ProductFormState = {
   brandId: '',
   description: '',
   imageUrls: [''],
-  specs: '',
+  specs: [{ title: '', value: '' }],
+  hiddenSpecs: {},
   featured: false,
   bestseller: false,
   isNew: false,
@@ -189,19 +196,67 @@ const invalidateAdminData = (queryClient: QueryClient) =>
 const normalizeProductCurrency = (currency: unknown): ProductCurrency =>
   String(currency ?? 'RON').toUpperCase() === 'EUR' ? 'EUR' : 'RON';
 
-const parseProductSpecs = (specs: string): Record<string, unknown> | undefined => {
-  if (!specs.trim()) return undefined;
+const hiddenProductSpecKeys = new Set([
+  'currency',
+  'priceIncludesVat',
+  'exchangeRate',
+  'code',
+  'source',
+  'sourceUrl',
+  'siteProductId',
+  'sourceRow',
+  'sourceImages',
+  'resourceLinks',
+  'attributes',
+  'importedFrom',
+  'importRow',
+]);
 
-  const parsed = JSON.parse(specs) as unknown;
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new SyntaxError('Product specs must be a JSON object');
+const emptyProductSpecDraft = (): ProductSpecDraft => ({ title: '', value: '' });
+
+const stringifyProductSpecValue = (value: unknown) => {
+  if (value == null) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => stringifyProductSpecValue(item))
+      .filter(Boolean)
+      .join(', ');
+  }
+  return '';
+};
+
+const splitProductSpecsForForm = (specs?: Record<string, unknown> | null) => {
+  const editableSpecs: ProductSpecDraft[] = [];
+  const hiddenSpecs: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(specs ?? {})) {
+    if (hiddenProductSpecKeys.has(key)) {
+      hiddenSpecs[key] = value;
+      continue;
+    }
+
+    const stringValue = stringifyProductSpecValue(value);
+    if (stringValue) {
+      editableSpecs.push({ title: key, value: stringValue });
+    }
   }
 
-  return parsed as Record<string, unknown>;
+  return {
+    editableSpecs: editableSpecs.length > 0 ? editableSpecs : [emptyProductSpecDraft()],
+    hiddenSpecs,
+  };
 };
 
 const buildProductSpecs = (form: ProductFormState) => {
-  const specs = parseProductSpecs(form.specs) ?? {};
+  const specs = form.specs.reduce<Record<string, unknown>>((acc, spec) => {
+    const title = spec.title.trim();
+    const value = spec.value.trim();
+    if (title && value) acc[title] = value;
+    return acc;
+  }, { ...form.hiddenSpecs });
 
   if (form.priceCurrency === 'EUR') {
     return {
@@ -903,6 +958,7 @@ export default function AdminPage() {
   /* ── edit helpers ── */
   const editProduct = (product: Product) => {
     startTransition(() => {
+      const { editableSpecs, hiddenSpecs } = splitProductSpecsForForm(product.specs);
       setActiveTab('products');
       setProductForm({
         id: product.id,
@@ -917,7 +973,8 @@ export default function AdminPage() {
         brandId: product.brandId,
         description: product.description ?? '',
         imageUrls: product.images.length > 0 ? product.images.map((img) => img.url) : [''],
-        specs: product.specs ? JSON.stringify(product.specs, null, 2) : '',
+        specs: editableSpecs,
+        hiddenSpecs,
         featured: product.featured,
         bestseller: product.bestseller,
         isNew: product.isNew,
@@ -967,6 +1024,24 @@ export default function AdminPage() {
   const submit = async (event: FormEvent, action: () => Promise<unknown>) => {
     event.preventDefault();
     try { await action(); } catch (error) { if (error instanceof SyntaxError) toast.error('Specificațiile nu sunt valide.'); }
+  };
+
+  /* ── specs helpers ── */
+  const addProductSpec = () => {
+    setProductForm((current) => ({ ...current, specs: [...current.specs, emptyProductSpecDraft()] }));
+  };
+  const removeProductSpec = (index: number) => {
+    setProductForm((current) => {
+      const nextSpecs = current.specs.filter((_, i) => i !== index);
+      return { ...current, specs: nextSpecs.length > 0 ? nextSpecs : [emptyProductSpecDraft()] };
+    });
+  };
+  const updateProductSpec = (index: number, field: keyof ProductSpecDraft, value: string) => {
+    setProductForm((current) => {
+      const nextSpecs = [...current.specs];
+      nextSpecs[index] = { ...(nextSpecs[index] ?? emptyProductSpecDraft()), [field]: value };
+      return { ...current, specs: nextSpecs };
+    });
   };
 
   /* ── image helpers ── */
@@ -1728,7 +1803,40 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div><Label>Detalii produs</Label><Textarea value={productForm.specs} onChange={(e) => setProductForm({ ...productForm, specs: e.target.value })} className="mt-1.5 min-h-28 font-mono text-xs" placeholder='{"material": "aluminiu"}' /></div>
+                  <div className="rounded-lg border border-border/70 bg-background p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>Specificații</Label>
+                      <Button type="button" variant="ghost" size="sm" onClick={addProductSpec} className="gap-1 text-xs">
+                        <Plus className="h-3 w-3" /> Adaugă
+                      </Button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {productForm.specs.map((spec, index) => (
+                        <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                          <Input
+                            value={spec.title}
+                            onChange={(e) => updateProductSpec(index, 'title', e.target.value)}
+                            placeholder="Titlu"
+                          />
+                          <Input
+                            value={spec.value}
+                            onChange={(e) => updateProductSpec(index, 'value', e.target.value)}
+                            placeholder="Valoare"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeProductSpec(index)}
+                            aria-label="Șterge specificația"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3 rounded-lg bg-secondary/35 p-3">
                     <label className="flex items-center gap-2 text-sm"><Checkbox checked={productForm.featured} onCheckedChange={(c) => setProductForm({ ...productForm, featured: Boolean(c) })} /> Recomandat</label>

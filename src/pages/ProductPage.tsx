@@ -23,6 +23,9 @@ import {
 import { Product } from '@/types';
 
 const hiddenSpecKeys = new Set([
+  'currency',
+  'priceIncludesVat',
+  'exchangeRate',
   'code',
   'source',
   'sourceUrl',
