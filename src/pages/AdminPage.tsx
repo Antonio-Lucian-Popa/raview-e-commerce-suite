@@ -1758,6 +1758,41 @@ export default function AdminPage() {
                       </Select>
                     </div>
                   </div>
+
+                  <div className="rounded-lg border border-border/70 bg-background p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>Specificații</Label>
+                      <Button type="button" variant="ghost" size="sm" onClick={addProductSpec} className="gap-1 text-xs">
+                        <Plus className="h-3 w-3" /> Adaugă
+                      </Button>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {productForm.specs.map((spec, index) => (
+                        <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                          <Input
+                            value={spec.title}
+                            onChange={(e) => updateProductSpec(index, 'title', e.target.value)}
+                            placeholder="Titlu"
+                          />
+                          <Input
+                            value={spec.value}
+                            onChange={(e) => updateProductSpec(index, 'value', e.target.value)}
+                            placeholder="Valoare"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeProductSpec(index)}
+                            aria-label="Șterge specificația"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -1798,41 +1833,6 @@ export default function AdminPage() {
                               <img src={draft.previewUrl} alt="" className="h-28 w-full object-cover" />
                             </div>
                           )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-border/70 bg-background p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label>Specificații</Label>
-                      <Button type="button" variant="ghost" size="sm" onClick={addProductSpec} className="gap-1 text-xs">
-                        <Plus className="h-3 w-3" /> Adaugă
-                      </Button>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {productForm.specs.map((spec, index) => (
-                        <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                          <Input
-                            value={spec.title}
-                            onChange={(e) => updateProductSpec(index, 'title', e.target.value)}
-                            placeholder="Titlu"
-                          />
-                          <Input
-                            value={spec.value}
-                            onChange={(e) => updateProductSpec(index, 'value', e.target.value)}
-                            placeholder="Valoare"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeProductSpec(index)}
-                            aria-label="Șterge specificația"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
                       ))}
                     </div>

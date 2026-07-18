@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Truck, Shield, Headphones, Award, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,10 @@ export default function HomePage() {
   });
   const topPromotion = promotions[0];
   const inStockProducts = inStockProductsData?.items ?? [];
+  const parentCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  );
 
   return (
     <>
@@ -128,7 +133,7 @@ export default function HomePage() {
             <p className="text-muted-foreground">Găsește soluția perfectă de iluminat pentru orice spațiu și nevoie.</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categories.map(cat => {
+            {parentCategories.map(cat => {
               const Icon = getCategoryIcon(cat);
 
               return (
