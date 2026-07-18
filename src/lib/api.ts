@@ -535,6 +535,11 @@ export const api = {
       return normalizeOrder(response);
     },
   },
+  contact: {
+    async send(payload: { name: string; phone: string; email: string; message: string }): Promise<{ success: boolean }> {
+      return request('/mail/contact', { method: 'POST', body: payload });
+    },
+  },
   orders: {
     async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number, paymentMethod: PaymentMethod): Promise<Order> {
       return request('/orders', {

@@ -4,12 +4,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Phone, MapPin, Mail, Clock } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
+import { api } from '@/lib/api';
+
+const emptyContactForm = {
+  name: '',
+  phone: '',
+  email: '',
+  message: '',
+};
 
 export default function ContactPage() {
-  const handleSubmit = (e: React.FormEvent) => {
+  const [form, setForm] = useState(emptyContactForm);
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Mesajul a fost trimis! Te vom contacta în curând.');
+    setSending(true);
+
+    try {
+      await api.contact.send(form);
+      setForm(emptyContactForm);
+      toast.success('Mesajul a fost trimis! Te vom contacta în curând.');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Mesajul nu a putut fi trimis. Încearcă din nou.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -54,12 +76,48 @@ export default function ContactPage() {
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 space-y-4 h-fit">
           <h3 className="font-display font-semibold text-lg">Trimite un mesaj</h3>
           <div className="grid sm:grid-cols-2 gap-4">
-            <div><Label>Nume</Label><Input className="mt-1" required /></div>
-            <div><Label>Telefon</Label><Input className="mt-1" required /></div>
+            <div>
+              <Label>Nume</Label>
+              <Input
+                className="mt-1"
+                value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>Telefon</Label>
+              <Input
+                className="mt-1"
+                value={form.phone}
+                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                required
+              />
+            </div>
           </div>
-          <div><Label>Email</Label><Input type="email" className="mt-1" required /></div>
-          <div><Label>Mesaj</Label><Textarea className="mt-1" rows={5} required /></div>
-          <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark">Trimite Mesajul</Button>
+          <div>
+            <Label>Email</Label>
+            <Input
+              type="email"
+              className="mt-1"
+              value={form.email}
+              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+              required
+            />
+          </div>
+          <div>
+            <Label>Mesaj</Label>
+            <Textarea
+              className="mt-1"
+              rows={5}
+              value={form.message}
+              onChange={(event) => setForm((current) => ({ ...current, message: event.target.value }))}
+              required
+            />
+          </div>
+          <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" disabled={sending}>
+            {sending ? 'Se trimite...' : 'Trimite Mesajul'}
+          </Button>
         </form>
       </div>
     </div>
