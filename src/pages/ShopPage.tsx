@@ -19,7 +19,7 @@ const DEFAULT_PRICE_MIN = 0;
 const DEFAULT_PRICE_MAX = 10000;
 const PRICE_STEP = 1;
 
-function CategoryPill({
+function CategoryNavItem({
   category,
   active,
   onSelect,
@@ -29,30 +29,30 @@ function CategoryPill({
   onSelect: () => void;
 }) {
   const Icon = getCategoryIcon(category);
-  const label = category?.name ?? 'Toate';
+  const label = category?.name ?? 'Toate produsele';
   const count = category?.productCount;
 
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`group relative flex min-h-24 w-full flex-col items-start justify-between overflow-hidden rounded-lg border p-3 text-left transition-all hover:-translate-y-0.5 hover:border-accent/70 hover:bg-accent/5 hover:shadow-sm ${
+      className={`group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
         active
-          ? 'border-accent bg-accent/10 text-foreground shadow-sm ring-1 ring-accent/20'
-          : 'border-border/80 bg-card text-muted-foreground'
+          ? 'bg-accent/10 font-semibold text-foreground'
+          : 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
       }`}
       aria-pressed={active}
     >
-      <span className={`mb-3 inline-flex h-9 w-9 items-center justify-center rounded-md ${
+      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${
         active ? 'bg-accent text-accent-foreground' : 'bg-secondary text-foreground/75 group-hover:text-accent'
       }`}>
-        <Icon className="h-5 w-5 stroke-[1.6]" />
+        <Icon className="h-3.5 w-3.5 stroke-[1.6]" />
       </span>
-      <span className="line-clamp-2 min-h-9 text-xs font-semibold leading-tight text-foreground">{label}</span>
-      <span className="mt-2 inline-flex items-center gap-1 text-[11px] leading-none text-muted-foreground">
-        {active && <CheckCircle2 className="h-3 w-3 text-accent" />}
-        {typeof count === 'number' ? `${count} produse` : active ? 'selectat' : 'catalog'}
-      </span>
+      <span className="flex-1 truncate leading-none">{label}</span>
+      {active && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-accent" />}
+      {typeof count === 'number' && (
+        <span className="shrink-0 text-[11px] leading-none text-muted-foreground">{count}</span>
+      )}
     </button>
   );
 }
@@ -151,17 +151,6 @@ export default function ShopPage() {
     () => categories.filter((category) => !category.parentId),
     [categories],
   );
-  const selectedParentCategory = useMemo(() => {
-    if (!selectedCategory) return undefined;
-    if (!selectedCategory.parentId) return selectedCategory;
-
-    return categories.find((category) => category.id === selectedCategory.parentId) ?? selectedCategory.parent ?? undefined;
-  }, [categories, selectedCategory]);
-  const selectedSubcategories = useMemo(() => {
-    if (!selectedParentCategory || !selectedCategoryId) return [];
-
-    return categories.filter((category) => category.parentId === selectedParentCategory.id);
-  }, [categories, selectedCategoryId, selectedParentCategory]);
 
   const updatePage = useCallback((page: number) => {
     const next = new URLSearchParams(searchParams);
@@ -284,6 +273,49 @@ export default function ShopPage() {
 
   const FiltersContent = () => (
     <div className="space-y-6">
+      <div className="rounded-lg border border-border/80 bg-card p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold">Categorii</h4>
+            <p className="mt-0.5 text-xs text-muted-foreground">Intră direct în familia de produse potrivită.</p>
+          </div>
+          {selectedCategoryId && (
+            <Button variant="ghost" size="sm" onClick={() => updateCategory('')} className="h-auto px-2 py-1 text-xs">
+              <X className="mr-1 h-3 w-3" /> Reset
+            </Button>
+          )}
+        </div>
+        <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+          <CategoryNavItem active={!selectedCategoryId} onSelect={() => updateCategory('')} />
+          {parentCategories.map((category) => {
+            const isParentActive = selectedCategoryId === category.id || selectedCategory?.parentId === category.id;
+            const subcategories = categories.filter((sub) => sub.parentId === category.id);
+
+            return (
+              <div key={category.id}>
+                <CategoryNavItem
+                  category={category}
+                  active={isParentActive}
+                  onSelect={() => updateCategory(selectedCategoryId === category.id ? '' : category.id)}
+                />
+                {isParentActive && subcategories.length > 0 && (
+                  <div className="ml-4 mt-1 space-y-1 border-l border-border/60 pl-2">
+                    {subcategories.map((sub) => (
+                      <CategoryNavItem
+                        key={sub.id}
+                        category={sub}
+                        active={selectedCategoryId === sub.id}
+                        onSelect={() => updateCategory(selectedCategoryId === sub.id ? category.id : sub.id)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="rounded-lg border border-border/80 bg-card p-4 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
@@ -416,51 +448,6 @@ export default function ShopPage() {
             </div>
           </div>
         </div>
-
-        <section className="mb-8 rounded-lg border border-border/70 bg-background p-4 shadow-sm sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-lg font-display font-semibold">Alege categoria</h2>
-              <p className="text-sm text-muted-foreground">Intră direct în familia de produse potrivită proiectului tău.</p>
-            </div>
-            {selectedCategory && (
-              <Button variant="ghost" size="sm" onClick={() => updateCategory('')} className="w-fit">
-                <X className="mr-1 h-3.5 w-3.5" /> Toate produsele
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            <CategoryPill active={!selectedCategoryId} onSelect={() => updateCategory('')} />
-            {parentCategories.map((category) => (
-              <CategoryPill
-                key={category.id}
-                category={category}
-                active={selectedCategoryId === category.id || selectedCategory?.parentId === category.id}
-                onSelect={() => updateCategory(selectedCategoryId === category.id ? '' : category.id)}
-              />
-            ))}
-          </div>
-          {selectedSubcategories.length > 0 && (
-            <div className="mt-5 border-t border-border/70 pt-5">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold">Subcategorii {selectedParentCategory ? `din ${selectedParentCategory.name}` : ''}</h3>
-                  <p className="text-xs text-muted-foreground">Alege o ramură mai exactă din categoria selectată.</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {selectedSubcategories.map((category) => (
-                  <CategoryPill
-                    key={category.id}
-                    category={category}
-                    active={selectedCategoryId === category.id}
-                    onSelect={() => updateCategory(selectedCategoryId === category.id ? selectedParentCategory?.id ?? '' : category.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
 
         <div className="flex gap-8">
           <aside className="hidden w-72 shrink-0 lg:block">
