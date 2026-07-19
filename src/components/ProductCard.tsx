@@ -26,12 +26,16 @@ const badgeLabels: Record<string, string> = {
 export function ProductCard({ product }: ProductCardProps) {
   const { addItem } = useCart();
   const [imageFailed, setImageFailed] = useState(false);
+  const priceWithVat = getProductPriceWithVat(product);
+  const oldPriceWithVat = getProductOldPriceWithVat(product);
+  const hasPrice = priceWithVat > 0;
+  const hasDiscount = Boolean(hasPrice && oldPriceWithVat && oldPriceWithVat > priceWithVat);
   const badges = [
     ...(product.isNew ? (['new'] as const) : []),
-    ...(product.oldPrice && product.oldPrice > product.price ? (['sale'] as const) : []),
+    ...(hasDiscount ? (['sale'] as const) : []),
     ...(product.bestseller ? (['bestseller'] as const) : []),
   ];
-  const discount = product.oldPrice ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : 0;
+  const discount = hasDiscount && oldPriceWithVat ? Math.round((1 - priceWithVat / oldPriceWithVat) * 100) : 0;
   const imageUrl = product.images[0]?.url ?? '/placeholder.svg';
   const hasImage = Boolean(product.images[0]?.url) && !imageFailed;
   const brandName = product.brand?.name ?? 'Brand';
@@ -39,9 +43,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const averageRating = reviewCount
     ? product.reviews!.reduce((sum, review) => sum + review.rating, 0) / reviewCount
     : 0;
-  const priceWithVat = getProductPriceWithVat(product);
-  const oldPriceWithVat = getProductOldPriceWithVat(product);
-  const hasPrice = priceWithVat > 0;
   const stockLabel = product.stock > 0 ? 'În stoc' : 'La comandă';
   const stockClass = product.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
 

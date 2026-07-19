@@ -20,7 +20,7 @@ export const convertProductPriceToRon = (product: Product, price = product.price
   return price;
 };
 
-export const getProductPriceWithoutVat = (product: Product) =>
+const getProductBasePriceWithoutVat = (product: Product) =>
   convertProductPriceToRon(product, product.price);
 
 export const getProductOldPriceWithoutVat = (product: Product) =>
@@ -33,6 +33,29 @@ const getVatRate = (product: Product) => {
 
 const priceIncludesVat = (product: Product) => product.specs?.priceIncludesVat === true;
 
+const getActivePromotion = (product: Product) => {
+  const now = Date.now();
+
+  return product.promotions
+    ?.filter((promotion) => {
+      if (!promotion.active) return false;
+      return new Date(promotion.startDate).getTime() <= now && new Date(promotion.endDate).getTime() >= now;
+    })
+    .sort((a, b) => Number(b.value) - Number(a.value))[0];
+};
+
+const applyPromotion = (product: Product, price: number) => {
+  const promotion = getActivePromotion(product);
+  if (!promotion) return price;
+
+  const discount =
+    promotion.type === 'percentage'
+      ? price * (Number(promotion.value) / 100)
+      : Number(promotion.value);
+
+  return Math.max(0, price - discount);
+};
+
 export const getProductPriceWithVat = (product: Product) => {
   const price = getProductPriceWithoutVat(product);
   return priceIncludesVat(product) ? price : price * (1 + getVatRate(product) / 100);
@@ -40,10 +63,16 @@ export const getProductPriceWithVat = (product: Product) => {
 
 export const getProductOldPriceWithVat = (product: Product) => {
   const oldPrice = getProductOldPriceWithoutVat(product);
-  return oldPrice == null || priceIncludesVat(product)
-    ? oldPrice
-    : oldPrice * (1 + getVatRate(product) / 100);
+  const hasPromotion = Boolean(getActivePromotion(product));
+  const basePrice = hasPromotion ? getProductBasePriceWithoutVat(product) : oldPrice;
+
+  return basePrice == null || priceIncludesVat(product)
+    ? basePrice
+    : basePrice * (1 + getVatRate(product) / 100);
 };
+
+export const getProductPriceWithoutVat = (product: Product) =>
+  applyPromotion(product, getProductBasePriceWithoutVat(product));
 
 export const getProductLineTotalWithVat = (product: Product, quantity: number) =>
   getProductPriceWithVat(product) * quantity;

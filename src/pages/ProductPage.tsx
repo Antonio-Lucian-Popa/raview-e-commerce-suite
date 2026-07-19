@@ -123,6 +123,7 @@ export default function ProductPage() {
   const oldPriceWithVat = getProductOldPriceWithVat(product);
   const lineTotalWithVat = getProductLineTotalWithVat(product, quantity);
   const hasPrice = priceWithVat > 0;
+  const hasDiscount = Boolean(hasPrice && oldPriceWithVat && oldPriceWithVat > priceWithVat);
   const selectedProductImage = product.images[selectedImage];
   const selectedImageUrl = selectedProductImage?.url ?? '/placeholder.svg';
   const selectedImageAlt = selectedProductImage?.alt ?? product.name;
@@ -202,10 +203,10 @@ export default function ProductPage() {
               <span className="min-w-0 truncate text-xs text-muted-foreground">SKU: {product.sku}</span>
             </div>
             <h1 className="break-words text-2xl font-display font-bold md:text-3xl">{product.name}</h1>
-            {(product.isNew || product.bestseller || (product.oldPrice && product.oldPrice > product.price)) && (
+            {(product.isNew || product.bestseller || hasDiscount) && (
               <div className="flex gap-2 mt-3">
                 {product.isNew && <Badge>Nou</Badge>}
-                {product.oldPrice && product.oldPrice > product.price && <Badge variant="destructive">Reducere</Badge>}
+                {hasDiscount && <Badge variant="destructive">Reducere</Badge>}
                 {product.bestseller && <Badge variant="secondary">Bestseller</Badge>}
               </div>
             )}
