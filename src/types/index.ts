@@ -134,6 +134,7 @@ export interface CheckoutFormData {
 }
 
 export interface FilterState {
+  productId?: string;
   categoryId?: string;
   brandIds: string[];
   inStock: boolean;

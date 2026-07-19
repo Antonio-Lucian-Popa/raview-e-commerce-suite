@@ -317,6 +317,7 @@ export const api = {
       const sort = sortMap[filters?.sortBy ?? 'newest'] ?? sortMap.newest;
       const response = await request<PaginatedResponse<any>>(
         `/products${createQueryString({
+          productId: filters?.productId,
           categoryId: filters?.categoryId,
           brandId: filters?.brandIds?.[0],
           featured: undefined,
@@ -358,6 +359,7 @@ export const api = {
         `/products${createQueryString({
           page: filters?.page ?? 1,
           limit: filters?.limit ?? 12,
+          productId: filters?.productId,
           categoryId: filters?.categoryId,
           brandIds: filters?.brandIds?.length ? filters.brandIds.join(',') : undefined,
           inStock: filters?.inStock || undefined,

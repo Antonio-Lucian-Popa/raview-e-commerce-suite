@@ -83,6 +83,7 @@ function clampPriceControl(index: 0 | 1, value: number, range: number[]) {
 export default function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
+  const selectedProductId = searchParams.get('productId') || '';
   const selectedCategoryId = searchParams.get('categoryId') || '';
   const brandIdsParam = searchParams.get('brandIds') || '';
   const brandIdsFromUrl = useMemo(
@@ -120,6 +121,7 @@ export default function ShopPage() {
       selectedBrands,
       inStockOnly,
       searchQuery,
+      selectedProductId,
       selectedCategoryId,
       priceFilterActive ? selectedMinPrice : DEFAULT_PRICE_MIN,
       priceFilterActive ? selectedMaxPrice : DEFAULT_PRICE_MAX,
@@ -128,6 +130,7 @@ export default function ShopPage() {
       api.products.getCatalogPage({
         page: currentPage,
         limit: pageSize,
+        productId: selectedProductId || undefined,
         categoryId: selectedCategoryId || undefined,
         sortBy,
         brandIds: selectedBrands,
@@ -141,7 +144,7 @@ export default function ShopPage() {
   const products = productsData?.items ?? [];
   const totalProducts = productsData?.meta.total ?? 0;
   const totalPages = Math.max(1, productsData?.meta.totalPages ?? 1);
-  const activeFilterCount = selectedBrands.length + (inStockOnly ? 1 : 0) + (selectedCategoryId ? 1 : 0) + (priceFilterActive ? 1 : 0);
+  const activeFilterCount = selectedBrands.length + (inStockOnly ? 1 : 0) + (selectedCategoryId ? 1 : 0) + (selectedProductId ? 1 : 0) + (priceFilterActive ? 1 : 0);
 
   const selectedCategory = useMemo(
     () => categories.find((category) => category.id === selectedCategoryId),
@@ -184,6 +187,7 @@ export default function ShopPage() {
   const updateCategory = (categoryId: string) => {
     const next = new URLSearchParams(searchParams);
     next.set('page', '1');
+    next.delete('productId');
     if (categoryId) {
       next.set('categoryId', categoryId);
     } else {
@@ -203,6 +207,7 @@ export default function ShopPage() {
       : [...selectedBrands, brandId];
     const next = new URLSearchParams(searchParams);
     next.set('page', '1');
+    next.delete('productId');
 
     if (nextBrands.length) {
       next.set('brandIds', nextBrands.join(','));
@@ -218,6 +223,7 @@ export default function ShopPage() {
     setInStockOnly(checked);
     const next = new URLSearchParams(searchParams);
     next.set('page', '1');
+    next.delete('productId');
     if (checked) {
       next.set('inStock', 'true');
     } else {
@@ -230,6 +236,7 @@ export default function ShopPage() {
     const [min, max] = clampPriceRange(range[0] ?? DEFAULT_PRICE_MIN, range[1] ?? DEFAULT_PRICE_MAX);
     const next = new URLSearchParams(searchParams);
     next.set('page', '1');
+    next.delete('productId');
 
     if (min > DEFAULT_PRICE_MIN) {
       next.set('minPrice', String(min));
@@ -263,6 +270,7 @@ export default function ShopPage() {
     setInStockOnly(false);
     const next = new URLSearchParams(searchParams);
     next.delete('categoryId');
+    next.delete('productId');
     next.delete('brandIds');
     next.delete('inStock');
     next.delete('minPrice');

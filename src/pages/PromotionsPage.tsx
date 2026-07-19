@@ -6,6 +6,12 @@ import { Button } from '@/components/ui/button';
 import { api } from '@/lib/api';
 import { withAssetVersion } from '@/lib/assets';
 
+const getPromotionProductsUrl = (promo: { productId?: string | null; categoryId?: string | null }) => {
+  if (promo.productId) return `/shop?productId=${encodeURIComponent(promo.productId)}`;
+  if (promo.categoryId) return `/shop?categoryId=${encodeURIComponent(promo.categoryId)}`;
+  return '/shop';
+};
+
 export default function PromotionsPage() {
   const { data: promos } = useQuery({ queryKey: ['promotions'], queryFn: () => api.promotions.getAll() });
 
@@ -32,7 +38,7 @@ export default function PromotionsPage() {
                   Valabilă până la {new Date(promo.endDate).toLocaleDateString('ro-RO')}
                 </p>
                 <Button className="mt-4 bg-accent text-accent-foreground hover:bg-gold-dark" size="sm" asChild>
-                  <Link to={promo.categoryId ? `/shop?categoryId=${promo.categoryId}` : '/shop'}>
+                  <Link to={getPromotionProductsUrl(promo)}>
                     Vezi produsele
                   </Link>
                 </Button>
