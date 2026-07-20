@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, Truck, Shield, Headphones, Award, MapPin } from 'lucide-react';
+import { ArrowRight, Truck, Shield, Headphones, Award, MapPin, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProductGrid } from '@/components/ProductGrid';
 import { ProductGridSkeleton } from '@/components/LoadingSkeletons';
@@ -105,6 +105,28 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Welcome Discount */}
+      <section className="border-b border-border/80 bg-background">
+        <div className="container-page py-6">
+          <div className="flex flex-col gap-4 rounded-lg border border-accent/25 bg-accent/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                <Gift className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-display text-xl font-bold">Cadou de bun venit: 10% reducere</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Folosește codul <span className="font-semibold text-foreground">WELCOME10</span> la prima comandă. Oferta nu se aplică produselor din categoria Lichidare de stoc.
+                </p>
+              </div>
+            </div>
+            <Button className="w-full bg-accent text-accent-foreground hover:bg-gold-dark sm:w-auto" asChild>
+              <Link to="/shop">Cumpără acum <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
           </div>
         </div>
       </section>
