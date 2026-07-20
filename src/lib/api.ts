@@ -5,6 +5,7 @@ import {
   Brand,
   Category,
   CheckoutFormData,
+  CouponPreview,
   CreateBrandPayload,
   CreateCategoryPayload,
   CreatePortfolioProjectPayload,
@@ -559,6 +560,17 @@ export const api = {
     },
   },
   orders: {
+    async previewCoupon(payload: {
+      couponCode: string;
+      email?: string;
+      phone?: string;
+      items: Array<{ productId: string; quantity: number }>;
+    }): Promise<CouponPreview> {
+      return request<CouponPreview>('/orders/coupon-preview', {
+        method: 'POST',
+        body: payload,
+      });
+    },
     async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number, paymentMethod: PaymentMethod): Promise<Order> {
       return request('/orders', {
         method: 'POST',

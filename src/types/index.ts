@@ -155,6 +155,12 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface CouponPreview {
+  valid: boolean;
+  discount: number;
+  message: string;
+}
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;

@@ -10,8 +10,8 @@ import { toast } from 'sonner';
 
 export default function AdminLoginPage() {
   const { isAuthenticated, isReady, login } = useAdminAuth();
-  const [email, setEmail] = useState('admin@lighting.local');
-  const [password, setPassword] = useState('Admin1234!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/admin';
@@ -68,6 +68,7 @@ export default function AdminLoginPage() {
           <p className="mt-2 text-sm text-muted-foreground">Intră cu contul tău de administrator.</p>
 
           <form
+            autoComplete="off"
             onSubmit={(event) => {
               event.preventDefault();
               void loginMutation.mutateAsync();
@@ -76,11 +77,31 @@ export default function AdminLoginPage() {
           >
             <div>
               <Label htmlFor="admin-email">Email</Label>
-              <Input id="admin-email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-1.5 h-11" placeholder="email@exemplu.ro" />
+              <Input
+                id="admin-email"
+                name="ravlux-admin-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="mt-1.5 h-11"
+                placeholder="email@exemplu.ro"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
             </div>
             <div>
               <Label htmlFor="admin-password">Parolă</Label>
-              <Input id="admin-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} className="mt-1.5 h-11" placeholder="••••••••" />
+              <Input
+                id="admin-password"
+                name="ravlux-admin-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="mt-1.5 h-11"
+                placeholder="••••••••"
+                autoComplete="new-password"
+              />
             </div>
             <Button type="submit" className="h-11 w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={loginMutation.isPending || !isReady}>
               {loginMutation.isPending ? 'Se autentifică...' : 'Intră în cont'}

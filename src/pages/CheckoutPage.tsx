@@ -2,6 +2,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { EmptyState } from '@/components/EmptyError';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,12 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
+  const [couponPreviewParams, setCouponPreviewParams] = useState<{
+    couponCode: string;
+    email?: string;
+    phone?: string;
+    items: Array<{ productId: string; quantity: number }>;
+  } | null>(null);
   const shipping = getShippingCost(subtotal);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
@@ -50,20 +57,21 @@ export default function CheckoutPage() {
   });
   const paymentMethod = watch('paymentMethod');
   const couponCode = watch('couponCode')?.trim() ?? '';
+  const email = watch('email')?.trim() ?? '';
+  const phone = watch('phone')?.trim() ?? '';
   const isWelcomeCoupon = couponCode.toUpperCase() === 'WELCOME10';
-  const isClearanceProduct = (item: (typeof items)[number]) => {
-    const searchable = `${item.product.category?.slug ?? ''} ${item.product.category?.name ?? ''} ${item.product.category?.parent?.slug ?? ''} ${item.product.category?.parent?.name ?? ''}`
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '');
-
-    return searchable.includes('lichidare') && searchable.includes('stoc');
-  };
-  const welcomeEligibleSubtotal = items
-    .filter((item) => !isClearanceProduct(item))
-    .reduce((sum, item) => sum + getProductLineTotalWithVat(item.product, item.quantity), 0);
-  const estimatedDiscount = isWelcomeCoupon
-    ? Math.round(welcomeEligibleSubtotal * 10) / 100
+  const couponItems = items.map((item) => ({ productId: item.product.id, quantity: item.quantity }));
+  const couponItemsSignature = couponItems.map((item) => `${item.productId}:${item.quantity}`).join('|');
+  const hasCouponContact = Boolean(email || phone);
+  const couponPreviewQuery = useQuery({
+    queryKey: ['orders', 'coupon-preview', couponPreviewParams],
+    queryFn: () => api.orders.previewCoupon(couponPreviewParams!),
+    enabled: Boolean(couponPreviewParams),
+    staleTime: 15_000,
+  });
+  const couponPreview = couponPreviewQuery.data;
+  const estimatedDiscount = isWelcomeCoupon && couponPreview?.valid
+    ? couponPreview.discount
     : 0;
   const total = Math.max(0, subtotal - estimatedDiscount) + shipping;
 
@@ -75,6 +83,25 @@ export default function CheckoutPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!couponCode || !isWelcomeCoupon || !hasCouponContact || couponItems.length === 0) {
+      setCouponPreviewParams(null);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setCouponPreviewParams({
+        couponCode,
+        email: email || undefined,
+        phone: phone || undefined,
+        items: couponItems,
+      });
+    }, 450);
+
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [couponCode, email, phone, isWelcomeCoupon, hasCouponContact, couponItemsSignature]);
 
   const onSubmit = async (data: FormData) => {
     setProcessing(true);
@@ -221,11 +248,23 @@ export default function CheckoutPage() {
               <Label>Cod reducere</Label>
               <Input {...register('couponCode')} className="mt-1 uppercase" placeholder="WELCOME10" autoComplete="off" />
             </div>
-            {isWelcomeCoupon && estimatedDiscount > 0 && (
-              <p className="text-sm font-medium text-accent">Reducere estimată: {formatLei(estimatedDiscount)}</p>
+            {couponCode && !isWelcomeCoupon && (
+              <p className="text-sm text-destructive">Codul introdus nu este valid.</p>
             )}
-            {isWelcomeCoupon && estimatedDiscount === 0 && (
-              <p className="text-sm text-muted-foreground">Codul nu se aplică produselor din categoria Lichidare de stoc.</p>
+            {isWelcomeCoupon && !hasCouponContact && (
+              <p className="text-sm text-muted-foreground">Completează emailul sau telefonul ca să verificăm codul.</p>
+            )}
+            {isWelcomeCoupon && hasCouponContact && couponPreviewQuery.isFetching && (
+              <p className="text-sm text-muted-foreground">Verificăm disponibilitatea codului...</p>
+            )}
+            {isWelcomeCoupon && couponPreview?.valid && estimatedDiscount > 0 && (
+              <p className="text-sm font-medium text-accent">{couponPreview.message}</p>
+            )}
+            {isWelcomeCoupon && couponPreview && !couponPreview.valid && (
+              <p className="text-sm text-destructive">{couponPreview.message}</p>
+            )}
+            {isWelcomeCoupon && couponPreviewQuery.isError && (
+              <p className="text-sm text-destructive">Nu am putut verifica acest cod acum. Încearcă din nou.</p>
             )}
           </div>
         </div>
