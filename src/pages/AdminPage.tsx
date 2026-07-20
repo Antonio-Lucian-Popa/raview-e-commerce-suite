@@ -424,6 +424,14 @@ function getOrderStatusOptions(order: Order) {
   return orderStatusOptions;
 }
 
+function canCancelOrder(order: Order) {
+  return order.paymentStatus !== 'paid' && !['cancelled', 'refunded'].includes(order.status);
+}
+
+function canRefundOrder(order: Order) {
+  return order.paymentStatus === 'paid' && order.status !== 'refunded';
+}
+
 function getOrderCustomer(order: Order) {
   return (
     order.customerSnapshot ??
@@ -1791,6 +1799,41 @@ export default function AdminPage() {
                         </Select>
                       </div>
                     )}
+                    <div className="mt-4 space-y-2">
+                      {canCancelOrder(selectedOrder) && (
+                        <Button
+                          variant="outline"
+                          className="w-full border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          disabled={updateOrderStatusMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm('Confirmi anularea comenzii? Stocul produselor din stoc propriu va fi refăcut automat.')) {
+                              updateOrderStatusMutation.mutate({ orderId: selectedOrder.id, status: 'cancelled' });
+                            }
+                          }}
+                        >
+                          {updateOrderStatusMutation.isPending ? 'Se anulează...' : 'Anulează și reface stocul'}
+                        </Button>
+                      )}
+                      {canRefundOrder(selectedOrder) && (
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          disabled={refundOrderMutation.isPending}
+                          onClick={() => {
+                            if (window.confirm('Confirmi rambursarea integrală? Acțiunea va trimite refund-ul în Stripe și va reface stocul.')) {
+                              refundOrderMutation.mutate(selectedOrder.id);
+                            }
+                          }}
+                        >
+                          {refundOrderMutation.isPending ? 'Se rambursează...' : 'Rambursează integral'}
+                        </Button>
+                      )}
+                      {selectedOrder.paymentStatus !== 'paid' && selectedOrder.status !== 'cancelled' && (
+                        <p className="text-xs text-muted-foreground">
+                          Refund-ul Stripe apare doar pentru comenzile plătite online.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -1829,7 +1872,7 @@ export default function AdminPage() {
                       <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{formatMoney(selectedOrder.shipping)}</span></div>
                       <div className="flex justify-between border-t border-border/70 pt-3 font-semibold"><span>Total</span><span>{formatMoney(selectedOrder.total)}</span></div>
                     </div>
-                    {selectedOrder.paymentStatus === 'paid' && selectedOrder.status !== 'refunded' && (
+                    {canRefundOrder(selectedOrder) && (
                       <Button
                         variant="destructive"
                         className="mt-4 w-full"
