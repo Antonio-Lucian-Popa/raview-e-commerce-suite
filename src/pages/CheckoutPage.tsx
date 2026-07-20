@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/hooks/useCart';
-import { CreditCard, Lock, Truck } from 'lucide-react';
+import { CreditCard, Gift, Lock, Truck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -27,6 +27,7 @@ const schema = z.object({
   city: z.string().min(2, 'Orașul este obligatoriu'),
   county: z.string().min(2, 'Județul este obligatoriu'),
   postalCode: z.string().min(4, 'Cod poștal invalid'),
+  couponCode: z.string().optional(),
   notes: z.string().optional(),
   paymentMethod: z.enum(['card', 'cash_on_delivery']),
   acceptTerms: z.literal(true, {
@@ -42,13 +43,29 @@ export default function CheckoutPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
   const shipping = getShippingCost(subtotal);
-  const total = subtotal + shipping;
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { paymentMethod: 'card', acceptTerms: false },
   });
   const paymentMethod = watch('paymentMethod');
+  const couponCode = watch('couponCode')?.trim() ?? '';
+  const isWelcomeCoupon = couponCode.toUpperCase() === 'WELCOME10';
+  const isClearanceProduct = (item: (typeof items)[number]) => {
+    const searchable = `${item.product.category?.slug ?? ''} ${item.product.category?.name ?? ''} ${item.product.category?.parent?.slug ?? ''} ${item.product.category?.parent?.name ?? ''}`
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+    return searchable.includes('lichidare') && searchable.includes('stoc');
+  };
+  const welcomeEligibleSubtotal = items
+    .filter((item) => !isClearanceProduct(item))
+    .reduce((sum, item) => sum + getProductLineTotalWithVat(item.product, item.quantity), 0);
+  const estimatedDiscount = isWelcomeCoupon
+    ? Math.round(welcomeEligibleSubtotal * 10) / 100
+    : 0;
+  const total = Math.max(0, subtotal - estimatedDiscount) + shipping;
 
   useEffect(() => {
     if (searchParams.get('payment') === 'cancelled') {
@@ -190,6 +207,27 @@ export default function CheckoutPage() {
             </RadioGroup>
             {errors.paymentMethod && <p className="text-xs text-destructive">Alege metoda de plată.</p>}
           </div>
+
+          <div className="border rounded-lg p-6 space-y-4">
+            <h3 className="font-semibold text-lg flex items-center gap-2"><Gift className="h-5 w-5" /> Cod de reducere</h3>
+            <div className="rounded-lg border border-accent/30 bg-accent/5 p-4 text-sm">
+              <p className="font-medium text-foreground">Cadou de bun venit!</p>
+              <p className="mt-1 text-muted-foreground">
+                Beneficiați de 10% reducere la prima comandă folosind codul WELCOME10.
+                Oferta nu se aplică produselor din categoria Lichidare de stoc.
+              </p>
+            </div>
+            <div>
+              <Label>Cod reducere</Label>
+              <Input {...register('couponCode')} className="mt-1 uppercase" placeholder="WELCOME10" autoComplete="off" />
+            </div>
+            {isWelcomeCoupon && estimatedDiscount > 0 && (
+              <p className="text-sm font-medium text-accent">Reducere estimată: {formatLei(estimatedDiscount)}</p>
+            )}
+            {isWelcomeCoupon && estimatedDiscount === 0 && (
+              <p className="text-sm text-muted-foreground">Codul nu se aplică produselor din categoria Lichidare de stoc.</p>
+            )}
+          </div>
         </div>
 
         {/* Order summary */}
@@ -210,9 +248,12 @@ export default function CheckoutPage() {
             </div>
             <div className="border-t pt-3 space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal cu TVA</span><span>{formatLei(subtotal)}</span></div>
+              {estimatedDiscount > 0 && (
+                <div className="flex justify-between text-accent"><span>Reducere WELCOME10</span><span>-{formatLei(estimatedDiscount)}</span></div>
+              )}
               <div className="flex justify-between"><span className="text-muted-foreground">Livrare</span><span>{shipping === 0 ? 'Gratuită' : formatLei(shipping)}</span></div>
               <div className="flex justify-between font-bold text-lg border-t pt-2"><span>Total</span><span>{formatLei(total)}</span></div>
-              <p className="text-xs text-muted-foreground">Prețurile includ TVA.</p>
+              <p className="text-xs text-muted-foreground">Prețurile includ TVA. Reducerea este validată la plasarea comenzii.</p>
             </div>
             <div className="space-y-2">
               <Label className="flex cursor-pointer items-start gap-2 text-xs leading-relaxed text-muted-foreground">

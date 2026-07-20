@@ -130,6 +130,7 @@ export interface CheckoutFormData {
   city: string;
   county: string;
   postalCode: string;
+  couponCode?: string;
   notes?: string;
 }
 

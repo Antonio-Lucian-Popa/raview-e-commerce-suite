@@ -577,6 +577,7 @@ export const api = {
             country: 'Romania',
           },
           items,
+          couponCode: payload.couponCode?.trim() || undefined,
           shipping,
           paymentMethod: paymentMethod === 'card' ? 'online_card' : 'cash_on_delivery',
           notes: [
