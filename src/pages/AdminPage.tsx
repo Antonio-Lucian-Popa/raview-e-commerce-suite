@@ -725,6 +725,12 @@ export default function AdminPage() {
     return null;
   };
 
+  const validateCategoryForm = () => {
+    if (!categoryForm.name.trim()) return 'Numele categoriei este obligatoriu.';
+    if (!categoryForm.slug.trim()) return 'Numele din link este obligatoriu.';
+    return null;
+  };
+
   /* ── filtering ── */
   const filteredProducts = useMemo(() => {
     return products;
@@ -912,6 +918,10 @@ export default function AdminPage() {
 
   const categoryMutation = useMutation({
     mutationFn: async () => {
+      const validationMessage = validateCategoryForm();
+      if (validationMessage) {
+        throw new Error(validationMessage);
+      }
       const basePayload = toCategoryPayload({
         ...categoryForm,
         image: categoryImageFile ? '' : categoryForm.image,
