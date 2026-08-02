@@ -14,7 +14,6 @@ import {
   FilterState,
   LoginResponse,
   Order,
-  PaymentMethod,
   PaginatedResponse,
   PortfolioProject,
   Product,
@@ -571,7 +570,7 @@ export const api = {
         body: payload,
       });
     },
-    async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number, paymentMethod: PaymentMethod): Promise<Order> {
+    async create(payload: CheckoutFormData, items: Array<{ productId: string; quantity: number }>, shipping: number): Promise<Order> {
       return request('/orders', {
         method: 'POST',
         body: {
@@ -591,9 +590,9 @@ export const api = {
           items,
           couponCode: payload.couponCode?.trim() || undefined,
           shipping,
-          paymentMethod: paymentMethod === 'card' ? 'online_card' : 'cash_on_delivery',
+          paymentMethod: 'online_card',
           notes: [
-            `Metoda de plata: ${paymentMethod === 'card' ? 'card online' : 'ramburs la curier'}`,
+            'Metoda de plata: card online',
             payload.notes,
           ].filter(Boolean).join('\n'),
         },

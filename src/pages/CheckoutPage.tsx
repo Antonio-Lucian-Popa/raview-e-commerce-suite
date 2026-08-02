@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useCart } from '@/hooks/useCart';
-import { CreditCard, Gift, Lock, Truck } from 'lucide-react';
+import { CreditCard, Gift, Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
@@ -30,7 +29,7 @@ const schema = z.object({
   postalCode: z.string().min(4, 'Cod poștal invalid'),
   couponCode: z.string().optional(),
   notes: z.string().optional(),
-  paymentMethod: z.enum(['card', 'cash_on_delivery']),
+  paymentMethod: z.literal('card'),
   acceptTerms: z.literal(true, {
     errorMap: () => ({ message: 'Trebuie să accepți termenii și politica de retur.' }),
   }),
@@ -39,8 +38,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function CheckoutPage() {
-  const { items, subtotal, clearCart } = useCart();
-  const navigate = useNavigate();
+  const { items, subtotal } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const [processing, setProcessing] = useState(false);
   const [couponPreviewParams, setCouponPreviewParams] = useState<{
@@ -55,7 +53,6 @@ export default function CheckoutPage() {
     resolver: zodResolver(schema),
     defaultValues: { paymentMethod: 'card', acceptTerms: false },
   });
-  const paymentMethod = watch('paymentMethod');
   const couponCode = watch('couponCode')?.trim() ?? '';
   const email = watch('email')?.trim() ?? '';
   const phone = watch('phone')?.trim() ?? '';
@@ -110,29 +107,22 @@ export default function CheckoutPage() {
         data as import('@/types').CheckoutFormData,
         items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
         shipping,
-        data.paymentMethod,
       );
 
-      if (data.paymentMethod === 'card') {
-        const checkoutSession = await api.payments.createCheckoutSession({
-          orderId: order.id,
-          successUrl: `${window.location.origin}/order-success?orderId=${order.id}`,
-          cancelUrl: `${window.location.origin}/checkout?payment=cancelled`,
-        });
+      const checkoutSession = await api.payments.createCheckoutSession({
+        orderId: order.id,
+        successUrl: `${window.location.origin}/order-success?orderId=${order.id}`,
+        cancelUrl: `${window.location.origin}/checkout?payment=cancelled`,
+      });
 
-        if (!checkoutSession.checkoutUrl) {
-          throw new Error('Stripe nu a returnat URL-ul de checkout.');
-        }
-
-        // Cart is cleared on OrderSuccessPage, not here — if the customer
-        // cancels/fails the Stripe payment they land back on /checkout and
-        // must still have their items to retry.
-        window.location.assign(checkoutSession.checkoutUrl);
-        return;
+      if (!checkoutSession.checkoutUrl) {
+        throw new Error('Stripe nu a returnat URL-ul de checkout.');
       }
 
-      clearCart();
-      navigate(`/order-success?orderId=${order.id}`);
+      // Cart is cleared on OrderSuccessPage, not here - if the customer
+      // cancels/fails the Stripe payment they land back on /checkout and
+      // must still have their items to retry.
+      window.location.assign(checkoutSession.checkoutUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'A apărut o eroare la plasarea comenzii. Încearcă din nou.');
     } finally {
@@ -210,28 +200,13 @@ export default function CheckoutPage() {
 
           <div className="border rounded-lg p-6 space-y-4">
             <h3 className="font-semibold text-lg flex items-center gap-2"><CreditCard className="h-5 w-5" /> Metodă de Plată</h3>
-            <RadioGroup
-              value={paymentMethod}
-              onValueChange={(value) => setValue('paymentMethod', value as FormData['paymentMethod'], { shouldValidate: true })}
-              className="grid gap-3"
-            >
-              <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:border-accent/60">
-                <RadioGroupItem value="card" className="mt-1" />
-                <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
-                <span>
-                  <span className="block text-sm font-medium">Card online</span>
-                  <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Plată securizată prin Stripe.</span>
-                </span>
-              </Label>
-              <Label className="flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors hover:border-accent/60">
-                <RadioGroupItem value="cash_on_delivery" className="mt-1" />
-                <Truck className="mt-0.5 h-5 w-5 text-accent" />
-                <span>
-                  <span className="block text-sm font-medium">Ramburs la curier</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">Plătești numerar sau cu cardul la livrare, în funcție de curier.</span>
-                </span>
-              </Label>
-            </RadioGroup>
+            <div className="flex items-start gap-3 rounded-lg border border-accent/40 bg-accent/5 p-4">
+              <CreditCard className="mt-0.5 h-5 w-5 text-accent" />
+              <span>
+                <span className="block text-sm font-medium">Card online</span>
+                <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Plată securizată prin Stripe.</span>
+              </span>
+            </div>
             {errors.paymentMethod && <p className="text-xs text-destructive">Alege metoda de plată.</p>}
           </div>
 
@@ -319,7 +294,7 @@ export default function CheckoutPage() {
               {errors.acceptTerms && <p className="text-xs text-destructive">{errors.acceptTerms.message}</p>}
             </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" disabled={processing}>
-              {processing ? 'Se procesează...' : paymentMethod === 'card' ? `Plătește online · ${formatLei(total)}` : `Comandă cu obligație de plată · ${formatLei(total)}`}
+              {processing ? 'Se procesează...' : `Plătește online · ${formatLei(total)}`}
             </Button>
             <p className="text-xs text-center text-muted-foreground">Datele tale sunt protejate și securizate.</p>
           </div>

@@ -30,8 +30,8 @@ export default function TermsPage() {
 
         <h2 className="text-lg font-semibold text-foreground">4. Plată</h2>
         <p>
-          Plata se poate face online cu cardul sau ramburs, în funcție de opțiunile disponibile în
-          checkout. Pentru plata online, clientul este redirecționat către procesatorul de plăți.
+          Plata se face online cu cardul. Clientul este redirecționat către procesatorul de plăți
+          pentru finalizarea tranzacției în siguranță.
         </p>
 
         <h2 className="text-lg font-semibold text-foreground">5. Livrare</h2>

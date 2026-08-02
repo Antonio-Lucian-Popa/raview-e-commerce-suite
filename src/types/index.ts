@@ -119,7 +119,7 @@ export interface CartItem {
   quantity: number;
 }
 
-export type PaymentMethod = 'card' | 'cash_on_delivery';
+export type PaymentMethod = 'card';
 
 export interface CheckoutFormData {
   firstName: string;
