@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { updateConsent } from '@/lib/gtm';
 
 const COOKIE_CONSENT_KEY = 'ravlux-cookie-consent';
 
@@ -10,12 +11,17 @@ export function CookieConsent() {
   const [choice, setChoice] = useState<CookieConsentValue | null>('accepted');
 
   useEffect(() => {
-    setChoice(localStorage.getItem(COOKIE_CONSENT_KEY) as CookieConsentValue | null);
+    const stored = localStorage.getItem(COOKIE_CONSENT_KEY) as CookieConsentValue | null;
+    setChoice(stored);
+    // Re-assert the stored decision for GTM Consent Mode on every load.
+    if (stored) updateConsent(stored === 'accepted');
   }, []);
 
   const saveChoice = (value: CookieConsentValue) => {
     localStorage.setItem(COOKIE_CONSENT_KEY, value);
     setChoice(value);
+    // Tell GTM (Consent Mode v2) to grant/deny analytics & marketing tags.
+    updateConsent(value === 'accepted');
   };
 
   if (choice) return null;
