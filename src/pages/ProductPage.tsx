@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw, Check, ZoomIn } from 'lucide-react';
@@ -21,6 +21,7 @@ import {
   getVatLabel,
 } from '@/lib/pricing';
 import { FREE_SHIPPING_THRESHOLD } from '@/lib/shipping';
+import { trackViewItem } from '@/lib/gtm';
 import { Product } from '@/types';
 
 const hiddenSpecKeys = new Set([
@@ -110,6 +111,12 @@ export default function ProductPage() {
     queryFn: () => api.products.getRelated(product!.categoryId, product!.id),
     enabled: !!product,
   });
+
+  // GA4 `view_item` — fires once per product when its data has loaded.
+  useEffect(() => {
+    if (product) trackViewItem(product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   if (isLoading) return <PageSkeleton />;
   if (error || !product) return <ErrorState message="Produsul nu a fost găsit." />;

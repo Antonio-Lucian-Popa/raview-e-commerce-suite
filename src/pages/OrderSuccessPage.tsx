@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/hooks/useCart';
+import { flushPendingPurchase } from '@/lib/gtm';
 
 export default function OrderSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -14,6 +15,8 @@ export default function OrderSuccessPage() {
   // redirect, so a cancelled/failed payment leaves items intact on /checkout.
   useEffect(() => {
     clearCart();
+    // GA4 `purchase` — sent once from the payload stashed at checkout.
+    flushPendingPurchase(orderId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

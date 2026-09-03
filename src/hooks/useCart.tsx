@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import { CartItem, Product } from '@/types';
 import { toast } from 'sonner';
 import { getProductLineTotalWithVat } from '@/lib/pricing';
+import { trackAddToCart, trackRemoveFromCart } from '@/lib/gtm';
 
 interface CartContextType {
   items: CartItem[];
@@ -47,10 +48,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     setIsOpen(true);
     toast.success(`${product.name} a fost adăugat în coș`);
+    trackAddToCart(product, addedQuantity);
   }, []);
 
   const removeItem = useCallback((productId: string) => {
-    setItems(prev => prev.filter(i => i.product.id !== productId));
+    setItems(prev => {
+      const removed = prev.find(i => i.product.id === productId);
+      if (removed) trackRemoveFromCart(removed.product, removed.quantity);
+      return prev.filter(i => i.product.id !== productId);
+    });
   }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {

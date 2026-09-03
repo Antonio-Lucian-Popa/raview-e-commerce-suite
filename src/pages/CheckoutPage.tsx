@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { formatLei, getProductLineTotalWithVat } from '@/lib/pricing';
 import { getShippingCost } from '@/lib/shipping';
+import { storePendingPurchase, toGa4Item, trackBeginCheckout } from '@/lib/gtm';
 
 const schema = z.object({
   firstName: z.string().min(2, 'Prenumele este obligatoriu'),
@@ -72,6 +73,14 @@ export default function CheckoutPage() {
     : 0;
   const total = Math.max(0, subtotal - estimatedDiscount) + shipping;
 
+  // GA4 `begin_checkout` — fires once when the checkout page opens with items.
+  useEffect(() => {
+    if (items.length > 0) {
+      trackBeginCheckout(items.map((item) => toGa4Item(item.product, item.quantity)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (searchParams.get('payment') === 'cancelled') {
       toast.error('Plata a fost anulată. Coșul tău a fost păstrat, poți încerca din nou.');
@@ -118,6 +127,16 @@ export default function CheckoutPage() {
       if (!checkoutSession.checkoutUrl) {
         throw new Error('Stripe nu a returnat URL-ul de checkout.');
       }
+
+      // Stash the purchase so GA4 `purchase` can fire on the success page,
+      // which only receives the orderId (the cart is gone after redirect).
+      storePendingPurchase({
+        transactionId: order.id,
+        items: items.map((item) => toGa4Item(item.product, item.quantity)),
+        value: total,
+        shipping,
+        coupon: estimatedDiscount > 0 ? couponCode : undefined,
+      });
 
       // Cart is cleared on OrderSuccessPage, not here - if the customer
       // cancels/fails the Stripe payment they land back on /checkout and

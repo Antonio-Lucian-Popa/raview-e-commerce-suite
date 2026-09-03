@@ -31,6 +31,7 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/ScrollToTop";
+import GtmRouteTracker from "./components/GtmRouteTracker";
 import { CookieConsent } from "./components/CookieConsent";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const AppShell = () => {
       {!isAdminRoute && <CartDrawer />}
       <main className="flex-1">
         <ScrollToTop />
+        <GtmRouteTracker />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/shop" element={<ShopPage />} />
