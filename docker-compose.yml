@@ -6,6 +6,8 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v1}
         VITE_EUR_TO_RON: ${VITE_EUR_TO_RON:-5}
+        # GTM container id (public, not a secret). Override with VITE_GTM_ID if needed.
+        VITE_GTM_ID: ${VITE_GTM_ID:-GTM-WSFFK7DT}
     image: raview-e-commerce-frontend:latest
     container_name: ravio_frontend
     restart: unless-stopped
