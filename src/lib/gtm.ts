@@ -64,25 +64,6 @@ function readStoredConsent(): 'accepted' | 'rejected' | null {
   }
 }
 
-/**
- * Registers the default (denied) consent state. MUST run before the GTM
- * container loads so that tags never fire before the visitor has accepted.
- */
-function initConsentDefault(): void {
-  gtag('consent', 'default', {
-    ad_storage: 'denied',
-    ad_user_data: 'denied',
-    ad_personalization: 'denied',
-    analytics_storage: 'denied',
-    functionality_storage: 'granted',
-    security_storage: 'granted',
-    wait_for_update: 500,
-  });
-  // Preserve ad-click / session info through the URL while cookies are denied.
-  gtag('set', 'url_passthrough', true);
-  gtag('set', 'ads_data_redaction', true);
-}
-
 /** Upgrades or downgrades consent after the visitor makes a choice. */
 export function updateConsent(granted: boolean): void {
   if (!isGtmConfigured()) return;
@@ -102,8 +83,13 @@ export function updateConsent(granted: boolean): void {
 let bootstrapped = false;
 
 /**
- * Initialises consent defaults and injects the GTM container script.
- * Call once, as early as possible (before React renders).
+ * Finishes GTM bootstrap on the JS side. The container script, its
+ * consent-mode defaults, and the <noscript> fallback are already loaded
+ * statically from index.html (required, unconditionally, for Google
+ * Merchant Center's site-verification check) — injecting them again here
+ * would load the container twice and double-count every event. This only
+ * re-applies a previously accepted consent as a defensive fallback in case
+ * it runs before the inline script in index.html does.
  */
 export function bootstrapGtm(): void {
   if (bootstrapped || !GTM_ID || typeof window === 'undefined') return;
@@ -111,32 +97,9 @@ export function bootstrapGtm(): void {
 
   window.dataLayer = window.dataLayer ?? [];
 
-  // 1. Consent defaults (denied) — before anything else lands in the dataLayer.
-  initConsentDefault();
-
-  // 2. Honour a previously stored acceptance so returning visitors are tracked.
   if (readStoredConsent() === 'accepted') {
     updateConsent(true);
   }
-
-  // 3. Standard GTM start marker + async container script.
-  pushToDataLayer({ 'gtm.start': Date.now(), event: 'gtm.js' });
-
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(GTM_ID)}`;
-  document.head.appendChild(script);
-
-  // 4. <noscript> fallback for the rare no-JS crawler.
-  const noscript = document.createElement('noscript');
-  const iframe = document.createElement('iframe');
-  iframe.src = `https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(GTM_ID)}`;
-  iframe.height = '0';
-  iframe.width = '0';
-  iframe.style.display = 'none';
-  iframe.style.visibility = 'hidden';
-  noscript.appendChild(iframe);
-  document.body.appendChild(noscript);
 }
 
 // ---------------------------------------------------------------------------

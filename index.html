@@ -1,6 +1,33 @@
 <!doctype html>
 <html lang="ro">
   <head>
+    <!-- Consent Mode v2 defaults: MUST run before Google Tag Manager loads
+         below, so no tag fires until the visitor accepts the cookie banner. -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){window.dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'granted',
+        security_storage: 'granted',
+        wait_for_update: 500
+      });
+      gtag('set', 'url_passthrough', true);
+      gtag('set', 'ads_data_redaction', true);
+      try {
+        if (localStorage.getItem('ravlux-cookie-consent') === 'accepted') {
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted'
+          });
+        }
+      } catch (e) {}
+    </script>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
