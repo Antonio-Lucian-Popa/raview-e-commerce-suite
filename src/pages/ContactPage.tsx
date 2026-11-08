@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Breadcrumbs } from '@/components/Breadcrumbs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,6 +116,7 @@ export default function ContactPage() {
               required
             />
           </div>
+          <p className="text-xs text-muted-foreground">Folosim datele pentru a răspunde solicitării tale. Nu include date sensibile. <Link to="/privacy" className="underline">Cum prelucrăm datele personale</Link>.</p>
           <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" disabled={sending}>
             {sending ? 'Se trimite...' : 'Trimite Mesajul'}
           </Button>

@@ -7,7 +7,7 @@ export default function DeliveryPage() {
       <Breadcrumbs items={[{ label: 'Politica de Livrare' }]} />
       <h1 className="text-3xl font-display font-bold mb-6">Politica de Livrare</h1>
       <div className="prose prose-sm max-w-none text-muted-foreground space-y-4">
-        <p>Ultima actualizare: Iulie 2026</p>
+        <p>Ultima actualizare: 8 noiembrie 2026</p>
 
         <h2 className="text-lg font-semibold text-foreground">1. Procesarea comenzilor</h2>
         <p>
@@ -18,8 +18,7 @@ export default function DeliveryPage() {
         <h2 className="text-lg font-semibold text-foreground">2. Termen de livrare</h2>
         <p>
           Livrarea prin curier durează, de regulă, 2-5 zile lucrătoare de la predarea coletului către
-          curier. Pentru produse speciale, voluminoase sau aduse la comandă, termenul poate fi comunicat
-          separat.
+          curier. Pentru produse speciale, voluminoase sau aduse la comandă, termenul se agreează înainte de acceptarea comenzii. Dacă nu convenim altfel, termenul maxim legal este de 30 de zile de la încheierea contractului.
         </p>
 
         <h2 className="text-lg font-semibold text-foreground">3. Costuri de livrare</h2>
@@ -31,7 +30,7 @@ export default function DeliveryPage() {
         <h2 className="text-lg font-semibold text-foreground">4. Verificarea coletului</h2>
         <p>
           Te rugăm să verifici integritatea coletului la primire. Dacă observi deteriorări vizibile,
-          solicită curierului întocmirea unui proces-verbal și contactează-ne cât mai curând.
+          poți solicita curierului întocmirea unui proces-verbal și ne poți contacta. Lipsa procesului-verbal sau a verificării la livrare nu înlătură drepturile legale. Riscul se transferă când tu sau un terț desemnat, altul decât transportatorul, primiți bunurile, cu excepțiile legale.
         </p>
 
         <h2 className="text-lg font-semibold text-foreground">5. Ridicare din showroom</h2>

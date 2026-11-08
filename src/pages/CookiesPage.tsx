@@ -6,7 +6,7 @@ export default function CookiesPage() {
       <Breadcrumbs items={[{ label: 'Politica Cookies' }]} />
       <h1 className="text-3xl font-display font-bold mb-6">Politica de Cookies</h1>
       <div className="prose prose-sm max-w-none text-muted-foreground space-y-4">
-        <p>Ultima actualizare: Iulie 2026</p>
+        <p>Ultima actualizare: 8 noiembrie 2026</p>
         <h2 className="text-lg font-semibold text-foreground">1. Ce sunt cookie-urile?</h2>
         <p>Cookie-urile sunt fișiere text mici stocate pe dispozitivul tău atunci când vizitezi un site web.</p>
 
@@ -25,11 +25,13 @@ export default function CookiesPage() {
         </p>
 
         <h2 className="text-lg font-semibold text-foreground">3. Gestionarea cookies</h2>
-        <p>
-          Poți accepta sau respinge cookie-urile neesențiale din bannerul de cookies. Poți șterge
-          oricând cookie-urile din setările browserului. Dacă vom adăuga servicii de analiză sau
-          marketing, lista concretă a furnizorilor și durata cookie-urilor trebuie actualizate aici.
-        </p>
+
+        <p>Poți accepta sau respinge utilizările opționale din banner. Pentru a afișa din nou bannerul, șterge cheia ravlux-cookie-consent din stocarea locală a acestui site, din setările browserului, apoi reîncarcă pagina. Poți șterge și cookie-urile deja salvate din setările browserului.</p>
+        <h2>4. Stocare locală și furnizori</h2>
+        <p>Coșul este păstrat în memoria paginii. Pentru administratorii autentificați, <code>raview_admin_session</code> păstrează sesiunea în localStorage până la deconectare sau invalidare. Pentru măsurarea conversiilor, <code>ravlux:pending_purchase</code> păstrează temporar în sessionStorage date despre produse și tranzacție pentru măsurarea conversiei; se elimină după consumarea evenimentului sau la închiderea sesiunii.</p>
+        <p>Google Tag Manager este furnizat de Google. Cookie-urile efective și duratele lor depind de etichetele activate în container. Nicio etichetă nouă nu trebuie publicată fără actualizarea inventarului și a informării privind scopul, furnizorul și durata. Plățile sunt realizate pe pagina Stripe, unde se aplică informările procesatorului. Linkul către Google Maps deschide un serviciu extern numai dacă îl accesezi.</p>
+        <p>Poți șterge datele stocate din setările browserului; această operație poate elimina și preferințele salvate. Informații despre prelucrarea datelor: <a href="/privacy">politica de confidențialitate</a>.</p>
+
       </div>
     </div>
   );

@@ -303,7 +303,7 @@ export default function CheckoutPage() {
                   <Link to="/returns" className="font-medium text-accent underline-offset-4 hover:underline">
                     Politica de retur
                   </Link>
-                  {' '}și{' '}
+                  {' '}. Am luat la cunoștință{' '}
                   <Link to="/privacy" className="font-medium text-accent underline-offset-4 hover:underline">
                     Politica de confidențialitate
                   </Link>
@@ -313,9 +313,9 @@ export default function CheckoutPage() {
               {errors.acceptTerms && <p className="text-xs text-destructive">{errors.acceptTerms.message}</p>}
             </div>
             <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-gold-dark" size="lg" disabled={processing}>
-              {processing ? 'Se procesează...' : `Plătește online · ${formatLei(total)}`}
+              {processing ? 'Se procesează...' : `Comandă cu obligație de plată · ${formatLei(total)}`}
             </Button>
-            <p className="text-xs text-center text-muted-foreground">Datele tale sunt protejate și securizate.</p>
+            <p className="text-xs text-muted-foreground">Livrare în România: procesare 1–2 zile lucrătoare, apoi transport 2–5 zile lucrătoare pentru produsele în stoc. Pentru produse la comandă, termenul se agreează înaintea acceptării comenzii. Drept legal de retragere: 14 zile. <Link to="/delivery" className="underline">Livrare</Link> · <Link to="/returns" className="underline">Retur și formular</Link>. Poți corecta datele înainte de trimitere.</p>
           </div>
         </div>
       </form>

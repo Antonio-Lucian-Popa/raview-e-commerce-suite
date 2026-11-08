@@ -246,6 +246,15 @@ export default function ProductPage() {
           )}
 
           <p className="text-muted-foreground">{product.seoDescription || product.description}</p>
+          <section className="rounded border p-4 text-sm space-y-2" aria-label="Informații despre siguranța produsului">
+            <h2 className="font-semibold">Producător și siguranță</h2>
+            {['manufacturerName', 'manufacturerPostalAddress', 'manufacturerEmail', 'euResponsiblePerson', 'safetyWarningsRo'].map((key) => {
+              const labels: Record<string, string> = { manufacturerName: 'Producător', manufacturerPostalAddress: 'Adresă producător', manufacturerEmail: 'Contact producător', euResponsiblePerson: 'Responsabil în UE', safetyWarningsRo: 'Avertismente și siguranță' };
+              const value = product.specs?.[key];
+              return typeof value === 'string' && value.trim() ? <p key={key}><strong>{labels[key]}:</strong> {value}</p> : null;
+            })}
+            <p>Identificare: {product.sku}. Pentru instrucțiuni și documente suplimentare ne poți contacta.</p>
+          </section>
 
           <div className="flex items-center gap-2">
             {product.stock > 0 ? (
@@ -256,7 +265,7 @@ export default function ProductPage() {
           </div>
 
           <div className="rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-foreground">
-            Termen de livrare: {product.stock > 0 ? '2-3 zile' : '2-3 săptămâni'}
+            Termen de livrare: {product.stock > 0 ? 'procesare 1–2 zile lucrătoare + transport 2–5 zile lucrătoare' : 'estimativ 2–3 săptămâni, de confirmat înaintea acceptării comenzii'}
           </div>
 
           {/* Quantity + Add to cart */}
@@ -332,7 +341,7 @@ export default function ProductPage() {
         <TabsContent value="delivery" className="mt-6 text-sm text-muted-foreground space-y-3">
           <p><strong>Livrare:</strong> Livrare în 2-3 săptămâni. Gratuită pentru comenzi peste {FREE_SHIPPING_THRESHOLD} lei.</p>
           <p><strong>Plată:</strong> Card bancar online.</p>
-          <p><strong>Retur:</strong> 30 de zile de la primirea produsului, în ambalajul original.</p>
+          <p><strong>Retur:</strong> Drept legal de retragere în 14 zile; retur comercial până la 30 de zile în condițiile politicii de retur.</p>
         </TabsContent>
       </Tabs>
 

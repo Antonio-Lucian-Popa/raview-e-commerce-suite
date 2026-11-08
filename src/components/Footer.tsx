@@ -1,3 +1,4 @@
+import { merchant } from '@/lib/merchant';
 import { Link } from 'react-router-dom';
 import { Phone, MapPin, Mail, Clock } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export function Footer() {
             <p className="text-primary-foreground/60 text-sm leading-relaxed">
               Redefinim spațiul prin lumină. Showroom dedicat iluminatului interior și exterior în Bacău.
             </p>
+            <p className="text-xs text-primary-foreground/70">Operat de {merchant.legalName}<br />CUI: {merchant.cui} · ONRC: {merchant.tradeRegister}<br /><Link to="/legal" className="underline">Datele complete ale comerciantului</Link></p>
           </div>
 
           {/* Links */}
@@ -76,6 +78,10 @@ export function Footer() {
           </div>
         </div>
 
+        <div className="mt-8 flex flex-wrap items-center gap-6 text-sm">
+          <a href="https://anpc.ro/" target="_blank" rel="noopener noreferrer" className="underline">ANPC – Protecția Consumatorilor</a>
+          <a href="https://reclamatiisal.anpc.ro/" target="_blank" rel="noopener noreferrer" className="underline">SAL – Soluționarea alternativă a litigiilor</a>
+        </div>
         <div className="border-t border-primary-foreground/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-primary-foreground/40">© {new Date().getFullYear()} Ravlux Lighting. Toate drepturile rezervate.</p>
           <div className="flex flex-wrap items-center justify-center gap-4">
