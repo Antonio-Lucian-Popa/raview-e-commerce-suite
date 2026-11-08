@@ -85,16 +85,14 @@ export function Footer() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="ANPC – Soluționarea alternativă a litigiilor (SAL)"
-            className="relative block h-[50px] w-[250px] shrink-0 overflow-hidden rounded-xl bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+            className="block h-[50px] w-[250px] shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
           >
-            {/* Preserve the supplied badge; clip only the surrounding screenshot padding. */}
             <img
-              src="/legal/anpc-sal-reference.png"
+              src="/legal/anpc-sal.png"
               alt="ANPC – Soluționarea alternativă a litigiilor – Detalii"
-              width={289}
-              height={63}
-              className="absolute -left-1 -top-1 h-[63px] w-[289px] max-w-none"
-              style={{ clipPath: 'inset(4px 59px 9px 29px)' }}
+              width={250}
+              height={50}
+              className="block h-[50px] w-[250px]"
             />
           </a>
         </div>
