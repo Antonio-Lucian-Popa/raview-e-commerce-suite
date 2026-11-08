@@ -80,7 +80,23 @@ export function Footer() {
 
         <div className="mt-8 flex flex-wrap items-center gap-6 text-sm">
           <a href="https://anpc.ro/" target="_blank" rel="noopener noreferrer" className="underline">ANPC – Protecția Consumatorilor</a>
-          <a href="https://reclamatiisal.anpc.ro/" target="_blank" rel="noopener noreferrer" className="underline">SAL – Soluționarea alternativă a litigiilor</a>
+          <a
+            href="https://reclamatiisal.anpc.ro/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="ANPC – Soluționarea alternativă a litigiilor (SAL)"
+            className="relative block h-[50px] w-[250px] shrink-0 overflow-hidden rounded-xl bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          >
+            {/* Preserve the supplied badge; clip only the surrounding screenshot padding. */}
+            <img
+              src="/legal/anpc-sal-reference.png"
+              alt="ANPC – Soluționarea alternativă a litigiilor – Detalii"
+              width={289}
+              height={63}
+              className="absolute -left-1 -top-1 h-[63px] w-[289px] max-w-none"
+              style={{ clipPath: 'inset(4px 59px 9px 29px)' }}
+            />
+          </a>
         </div>
         <div className="border-t border-primary-foreground/10 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-primary-foreground/40">© {new Date().getFullYear()} Ravlux Lighting. Toate drepturile rezervate.</p>
