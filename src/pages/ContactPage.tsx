@@ -62,17 +62,7 @@ export default function ContactPage() {
               </div>
             ))}
           </div>
-          <div className="aspect-video rounded-xl overflow-hidden bg-secondary">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2734.5!2d26.9!3d46.55!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNDbCsDMzJzAwLjAiTiAyNsKwNTQnMDAuMCJF!5e0!3m2!1sro!2sro!4v1234567890"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              title="Locația Ravlux Lighting"
-            />
-          </div>
+          <a href="https://www.google.com/maps/search/?api=1&query=Gheorghe+Donici+2+Bacau" target="_blank" rel="noopener noreferrer" className="text-sm underline">Deschide adresa în Google Maps (serviciu extern)</a>
         </div>
         <form onSubmit={handleSubmit} className="border rounded-lg p-6 space-y-4 h-fit">
           <h3 className="font-display font-semibold text-lg">Trimite un mesaj</h3>

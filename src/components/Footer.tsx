@@ -79,6 +79,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-6 text-sm">
+          <button type="button" className="underline" onClick={() => window.dispatchEvent(new Event('ravlux:cookie-settings'))}>Setări cookies</button>
           <a href="https://anpc.ro/" target="_blank" rel="noopener noreferrer" className="underline">ANPC – Protecția Consumatorilor</a>
           <a
             href="https://reclamatiisal.anpc.ro/"

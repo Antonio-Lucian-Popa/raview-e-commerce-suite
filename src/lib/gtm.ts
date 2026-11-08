@@ -1,19 +1,9 @@
 import { Product } from '@/types';
 import { getProductPriceWithVat } from '@/lib/pricing';
 
-/**
- * Google Tag Manager + GDPR consent (Consent Mode v2) integration.
- *
- * The GTM container id is read from the `VITE_GTM_ID` environment variable
- * (format `GTM-XXXXXXX`). When it is missing (local dev, preview builds), the
- * integration stays completely inert — no script is injected and every helper
- * becomes a no-op, so nothing breaks and no analytics run.
- *
- * Marketing/analytics tags are gated behind the cookie banner: consent defaults
- * to "denied" and is only upgraded to "granted" once the visitor accepts, in
- * line with the promise made in the consent banner and RO/EU (GDPR) rules.
- */
+import { readConsent } from '@/lib/consent';
 
+/** Google scripts are loaded only after explicit consent to an optional purpose. */
 const GTM_ID = (import.meta.env.VITE_GTM_ID as string | undefined)?.trim();
 
 // Currency reported to GA4. Prices are normalised to RON incl. VAT in `toGa4Item`.
@@ -31,12 +21,12 @@ declare global {
 }
 
 export function isGtmConfigured(): boolean {
-  return Boolean(GTM_ID);
+  return Boolean(GTM_ID && /^GTM-[A-Z0-9]+$/.test(GTM_ID));
 }
 
 /** Low-level push to the GTM dataLayer. Safe to call even when GTM is disabled. */
 export function pushToDataLayer(data: DataLayerObject): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !readConsent()?.analytics) return;
   window.dataLayer = window.dataLayer ?? [];
   window.dataLayer.push(data);
 }
@@ -54,52 +44,58 @@ function gtag(...args: unknown[]): void {
 // Consent Mode v2
 // ---------------------------------------------------------------------------
 
-const STORED_CONSENT_KEY = 'ravlux-cookie-consent';
+let bootstrapped = false;
+let loadedPreferences: { analytics: boolean; marketing: boolean } | null = null;
 
-function readStoredConsent(): 'accepted' | 'rejected' | null {
-  try {
-    return localStorage.getItem(STORED_CONSENT_KEY) as 'accepted' | 'rejected' | null;
-  } catch {
-    return null;
+/** Stop loaded tags on revocation; a removed script alone would not stop its timers. */
+export function updateConsent(): void {
+  const preferences = readConsent();
+  const analytics = preferences?.analytics === true;
+  const marketing = preferences?.marketing === true;
+  if (bootstrapped && loadedPreferences &&
+    ((loadedPreferences.analytics && !analytics) || (loadedPreferences.marketing && !marketing))) {
+    gtag('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
+    for (const cookie of document.cookie.split(';')) {
+      const name = cookie.split('=')[0].trim();
+      if (!/^(_ga|_gid|_gat|_gcl_|_fbp)/.test(name)) continue;
+      const labels = location.hostname.split('.');
+      for (const domain of ['', ...labels.map((_, i) => labels.slice(i).join('.'))]) {
+        document.cookie = `${name}=; Max-Age=0; path=/${domain ? `; domain=${domain}` : ''}`;
+      }
+    }
+    try { sessionStorage.removeItem(PENDING_PURCHASE_KEY); } catch { /* unavailable */ }
+    window.location.reload();
+    return;
   }
-}
-
-/** Upgrades or downgrades consent after the visitor makes a choice. */
-export function updateConsent(granted: boolean): void {
-  if (!isGtmConfigured()) return;
-  const value = granted ? 'granted' : 'denied';
+  if (!bootstrapped) { bootstrapGtm(); return; }
+  loadedPreferences = { analytics, marketing };
   gtag('consent', 'update', {
-    ad_storage: value,
-    ad_user_data: value,
-    ad_personalization: value,
-    analytics_storage: value,
+    analytics_storage: analytics ? 'granted' : 'denied',
+    ad_storage: marketing ? 'granted' : 'denied',
+    ad_user_data: marketing ? 'granted' : 'denied',
+    ad_personalization: marketing ? 'granted' : 'denied',
   });
 }
 
-// ---------------------------------------------------------------------------
-// Container bootstrap
-// ---------------------------------------------------------------------------
-
-let bootstrapped = false;
-
-/**
- * Finishes GTM bootstrap on the JS side. The container script, its
- * consent-mode defaults, and the <noscript> fallback are already loaded
- * statically from index.html (required, unconditionally, for Google
- * Merchant Center's site-verification check) — injecting them again here
- * would load the container twice and double-count every event. This only
- * re-applies a previously accepted consent as a defensive fallback in case
- * it runs before the inline script in index.html does.
- */
 export function bootstrapGtm(): void {
-  if (bootstrapped || !GTM_ID || typeof window === 'undefined') return;
+  const preferences = readConsent();
+  if (bootstrapped || !isGtmConfigured() || typeof window === 'undefined' ||
+    (!preferences?.analytics && !preferences?.marketing)) return;
   bootstrapped = true;
-
-  window.dataLayer = window.dataLayer ?? [];
-
-  if (readStoredConsent() === 'accepted') {
-    updateConsent(true);
-  }
+  loadedPreferences = preferences;
+  window.dataLayer = [];
+  gtag('consent', 'default', {
+    analytics_storage: preferences.analytics ? 'granted' : 'denied',
+    ad_storage: preferences.marketing ? 'granted' : 'denied',
+    ad_user_data: preferences.marketing ? 'granted' : 'denied',
+    ad_personalization: preferences.marketing ? 'granted' : 'denied',
+  });
+  gtag('set', 'ads_data_redaction', true);
+  window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(GTM_ID!)}`;
+  document.head.appendChild(script);
 }
 
 // ---------------------------------------------------------------------------
@@ -205,6 +201,7 @@ export function trackPurchase(payload: PurchasePayload): void {
 
 /** Stashes the purchase payload just before redirecting to the payment provider. */
 export function storePendingPurchase(payload: PurchasePayload): void {
+  if (!isGtmConfigured() || !readConsent()?.analytics) return;
   try {
     sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify(payload));
   } catch {
